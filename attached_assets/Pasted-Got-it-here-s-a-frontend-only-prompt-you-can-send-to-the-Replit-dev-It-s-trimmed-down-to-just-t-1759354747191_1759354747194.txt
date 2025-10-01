@@ -1,0 +1,158 @@
+Got it ✅ — here’s a frontend-only prompt you can send to the Replit dev. It’s trimmed down to just the React + Vite frontend, no backend. This will let them build the UI/UX screens (Landing, Dashboard, Investment Flow, Admin placeholder) with mock data and API placeholders.
+
+⸻
+
+Frontend Project Brief — Crypto Investment Website (React + Vite)
+
+🎯 Goal
+
+Build a responsive React + Vite web frontend for a crypto investment platform. The app will have tier-based investment options (Silver, Gold, Platinum), an investment calculator (returns estimator), live crypto price charts, a dashboard, and basic admin views.
+
+For now: frontend only — backend APIs will be mocked with placeholders.
+
+⸻
+
+1) Core Screens
+
+1. Landing Page
+	•	Header: logo + nav links (Home, Plans, Dashboard, Login/Signup).
+	•	Hero section with call-to-action (“Invest Smarter in Crypto”).
+	•	Tier cards:
+	•	Silver — Min $1,000 — APR 6%
+	•	Gold — Min $5,000 — APR 8%
+	•	Platinum — Min $10,000 — APR 10%
+Each card should show a “Start Investing” button.
+	•	Live preview chart (BTC/USD candlestick).
+	•	“How It Works” section: Deposit → Choose Plan → Earn.
+	•	Footer with links: FAQ, Terms, Contact.
+
+⸻
+
+2. Signup / Login
+	•	Signup form: Email + Password + Confirm Password.
+	•	Login form: Email + Password.
+	•	After signup → redirect to KYC placeholder page.
+
+⸻
+
+3. User Dashboard
+	•	Top section:
+	•	Total balance in USD (mocked for now).
+	•	Deposit button (click opens mock modal).
+	•	Main section:
+	•	Left: Large live crypto chart (BTC by default; switcher for ETH/USDT).
+	•	Right: Portfolio snapshot (mock data: active investments + upcoming payouts).
+	•	Bottom: Transaction history (mock table).
+
+⸻
+
+4. Investment Flow (Modal / Page)
+	•	Step 1: Select Tier (Silver/Gold/Platinum).
+	•	Step 2: Enter Amount (must meet tier minimum).
+	•	Step 3: Choose Asset (BTC, ETH, USDC).
+	•	Step 4: Select investment period (slider: 30–365 days).
+	•	Show live Estimated Interest + Estimated Total using fixed APR: •	“Confirm & Invest” → stores in mock state (no backend yet).
+
+⸻
+
+5. Admin Page (Placeholder)
+	•	Simple table: list of mock users with email, kycStatus, activeInvestments.
+	•	No real functionality, just placeholder UI.
+
+⸻
+
+2) Tech Stack
+	•	React + Vite (fast dev environment).
+	•	React Router for routing between pages.
+	•	Tailwind CSS (or Chakra UI) for styling.
+	•	State management: React Context or Zustand (optional).
+	•	Charting: TradingView Lightweight Charts (preferred) or Chart.js.
+
+⸻
+
+3) Components to Build
+	•	Navbar.jsx — logo + nav links.
+	•	Footer.jsx — footer links.
+	•	TierCard.jsx — reusable card for Silver/Gold/Platinum.
+	•	ReturnsEstimator.jsx — investment calculator (see code sample below).
+	•	ChartComponent.jsx — wrapper for TradingView/Chart.js showing live price candles (use mock JSON for now).
+	•	Dashboard.jsx — pulls portfolio, chart, transactions (mock state).
+	•	AdminPage.jsx — table of mock users/investments.
+
+⸻
+
+4) Sample React Component — Returns Estimator.                                            import React, { useMemo, useState } from "react";
+
+const TIERS = {
+  silver: { label: "Silver", min: 1000, apr: 0.06 },
+  gold: { label: "Gold", min: 5000, apr: 0.08 },
+  platinum: { label: "Platinum", min: 10000, apr: 0.10 },
+};
+
+export default function ReturnsEstimator() {
+  const [tier, setTier] = useState("silver");
+  const [amount, setAmount] = useState(TIERS.silver.min);
+  const [days, setDays] = useState(90);
+
+  const { interest, total } = useMemo(() => {
+    const apr = TIERS[tier].apr;
+    const p = Number(amount) || 0;
+    const i = p * (apr / 365) * Number(days);
+    return { interest: i, total: p + i };
+  }, [tier, amount, days]);
+
+  return (
+    <div className="p-4 border rounded max-w-md">
+      <h3 className="text-lg font-bold mb-2">Investment Estimator</h3>
+
+      <label>
+        Tier:
+        <select value={tier} onChange={(e) => { setTier(e.target.value); setAmount(TIERS[e.target.value].min); }}>
+          {Object.entries(TIERS).map(([k, v]) => (
+            <option key={k} value={k}>{v.label} (Min ${v.min})</option>
+          ))}
+        </select>
+      </label>
+
+      <label>
+        Amount (USD):
+        <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} min={TIERS[tier].min} />
+      </label>
+
+      <label>
+        Period: {days} days
+        <input type="range" min={30} max={365} value={days} onChange={(e) => setDays(e.target.value)} />
+      </label>
+
+      <div className="mt-2">
+        <strong>Estimated Interest:</strong> ${interest.toFixed(2)}
+      </div>
+      <div>
+        <strong>Estimated Total:</strong> ${total.toFixed(2)}
+      </div>
+    </div>
+  );
+}   ⸻
+
+5) Routing (example)
+	•	/ → Landing page
+	•	/login → Login form
+	•	/signup → Signup form
+	•	/dashboard → User dashboard
+	•	/admin → Admin placeholder page
+
+⸻
+
+6) Mock Data & State
+	•	Store investments in local state (React Context/Zustand) for now.
+	•	Mock user balance, transactions, portfolio.
+	•	Mock chart data (JSON of candlesticks).
+
+⸻
+
+7) Deliverables
+	•	Fully functional frontend in React + Vite.
+	•	Components & pages as described.
+	•	Responsive design (mobile + desktop).
+	•	State management with local mock data.
+	•	Readme with setup instructions:   ✅ Acceptance: I should be able to open /, see the landing page with tier cards + preview chart, log in (mocked), access /dashboard with live chart + portfolio, use the Returns Estimator, and add an investment (stored in local state).
