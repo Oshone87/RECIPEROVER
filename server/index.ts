@@ -60,12 +60,38 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  const port = parseInt(process.env.PORT || "5000", 10);
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
+
+    // Get local IP address for mobile access
+    import("os").then((os) => {
+      const networkInterfaces = os.networkInterfaces();
+      let localIP = "localhost";
+
+      for (const interfaceName in networkInterfaces) {
+        const interfaceInfo = networkInterfaces[interfaceName];
+        if (interfaceInfo) {
+          for (const networkInterface of interfaceInfo) {
+            if (
+              networkInterface.family === "IPv4" &&
+              !networkInterface.internal
+            ) {
+              localIP = networkInterface.address;
+              break;
+            }
+          }
+        }
+      }
+
+      console.log("\n🌐 Network URLs:");
+      console.log(`  Local:   http://localhost:${port}`);
+      console.log(`  Mobile:  http://${localIP}:${port}`);
+      console.log("\n📱 To view on your phone:");
+      console.log(`  1. Make sure your phone is on the same WiFi network`);
+      console.log(
+        `  2. Open http://${localIP}:${port} in your phone's browser\n`
+      );
+    });
   });
 })();

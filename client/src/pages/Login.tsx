@@ -4,23 +4,55 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Eye, EyeOff } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Login successful!",
-      description: "Welcome back to CryptoInvest",
-    });
-    setLocation("/dashboard");
+    setIsLoading(true);
+
+    try {
+      const success = await login(email, password);
+
+      if (success) {
+        toast({
+          title: "Login successful!",
+          description: "Welcome back to CryptoInvest",
+        });
+
+        // Check if admin user and redirect accordingly
+        if (email === "admin@reciperover.com") {
+          setLocation("/admin-dashboard");
+        } else {
+          setLocation("/dashboard");
+        }
+      } else {
+        toast({
+          title: "Login failed",
+          description: "Invalid email or password. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -32,7 +64,9 @@ export default function Login() {
             <span className="text-2xl font-bold">CryptoInvest</span>
           </div>
           <h1 className="text-2xl font-bold">Welcome Back</h1>
-          <p className="text-sm text-muted-foreground">Sign in to your account</p>
+          <p className="text-sm text-muted-foreground">
+            Sign in to your account
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -50,15 +84,31 @@ export default function Login() {
           </div>
 
           <div className="space-y-2">
-            <div className="flex justify-between">
+            <div className="flex items-center gap-2">
               <Label htmlFor="password">Password</Label>
-              <a href="#" className="text-sm text-primary hover:underline">
-                Forgot password?
-              </a>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-auto p-1"
+                onClick={() => setShowPassword(!showPassword)}
+                data-testid="password-toggle"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+              <div className="ml-auto">
+                <a href="#" className="text-sm text-primary hover:underline">
+                  Forgot password?
+                </a>
+              </div>
             </div>
             <Input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -67,15 +117,24 @@ export default function Login() {
             />
           </div>
 
-          <Button type="submit" className="w-full" size="lg" data-testid="button-login-submit">
-            Sign In
+          <Button
+            type="submit"
+            className="w-full"
+            size="lg"
+            disabled={isLoading}
+            data-testid="button-login-submit"
+          >
+            {isLoading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
 
         <div className="text-center text-sm text-muted-foreground">
           Don't have an account?{" "}
           <Link href="/signup">
-            <a className="text-primary hover:underline" data-testid="link-signup-from-login">
+            <a
+              className="text-primary hover:underline"
+              data-testid="link-signup-from-login"
+            >
               Sign up
             </a>
           </Link>
