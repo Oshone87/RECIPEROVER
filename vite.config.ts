@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  base: "/CryptoInvest/", // GitHub Pages base path
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
