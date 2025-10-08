@@ -1,19 +1,95 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, TrendingUp, LogOut, User } from "lucide-react";
+import {
+  Moon,
+  Sun,
+  TrendingUp,
+  LogOut,
+  User,
+  Settings,
+  Shield,
+  Trash2,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+} from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 import { useAuth } from "@/contexts/AuthContext";
+import { useInvestment } from "@/contexts/InvestmentContext";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { SiBitcoin, SiEthereum } from "react-icons/si";
+import { TbCurrencySolana } from "react-icons/tb";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
 export function Navbar() {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
   const { user, logout, isAuthenticated } = useAuth();
+  const { getAssetBalance } = useInvestment();
+  const [, setLocation] = useLocation();
+
+  // Get user's KYC status
+  const getUserKycStatus = () => {
+    if (!user) return { isVerified: false, kycStatus: "not_submitted" };
+    const registeredUsers = JSON.parse(
+      localStorage.getItem("registeredUsers") || "[]"
+    );
+    const currentUser = registeredUsers.find(
+      (u: any) => u.email === user?.email
+    );
+    return {
+      isVerified: currentUser?.isVerified || false,
+      kycStatus: currentUser?.kycStatus || "not_submitted",
+    };
+  };
+
+  const kycInfo = getUserKycStatus();
+
+  // Handle account deletion
+  const handleDeleteAccount = () => {
+    if (!user) return;
+
+    // Remove user from auth system
+    const registeredUsers = JSON.parse(
+      localStorage.getItem("registeredUsers") || "[]"
+    );
+    const updatedUsers = registeredUsers.filter((u: any) => u.id !== user.id);
+    localStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
+
+    // Remove user's individual data
+    localStorage.removeItem(`userBalance_${user.id}`);
+    localStorage.removeItem(`userAssetBalances_${user.id}`);
+    localStorage.removeItem(`userInvestments_${user.id}`);
+    localStorage.removeItem(`userTransactions_${user.id}`);
+
+    // Remove from admin system
+    const adminUsers = JSON.parse(localStorage.getItem("adminUsers") || "[]");
+    const updatedAdminUsers = adminUsers.filter((u: any) => u.id !== user.id);
+    localStorage.setItem("adminUsers", JSON.stringify(updatedAdminUsers));
+
+    // Logout and redirect
+    logout();
+    setLocation("/");
+  };
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -41,7 +117,56 @@ export function Navbar() {
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center gap-6">
+          {/* Asset Breakdown in Navbar - Only show on dashboard */}
+          {isAuthenticated && location === "/dashboard" && (
+            <div className="hidden lg:flex items-center gap-4 mx-4">
+              {/* Bitcoin Balance */}
+              <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+                <SiBitcoin className="h-4 w-4 text-orange-500" />
+                <div className="text-xs">
+                  <span className="text-orange-800 dark:text-orange-200 font-medium">
+                    BTC
+                  </span>
+                  <span className="ml-1 font-mono text-orange-900 dark:text-orange-100">
+                    ${getAssetBalance("BTC").toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Ethereum Balance */}
+              <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                <SiEthereum className="h-4 w-4 text-blue-500" />
+                <div className="text-xs">
+                  <span className="text-blue-800 dark:text-blue-200 font-medium">
+                    ETH
+                  </span>
+                  <span className="ml-1 font-mono text-blue-900 dark:text-blue-100">
+                    ${getAssetBalance("ETH").toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Solana Balance */}
+              <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
+                <TbCurrencySolana className="h-4 w-4 text-purple-500" />
+                <div className="text-xs">
+                  <span className="text-purple-800 dark:text-purple-200 font-medium">
+                    SOL
+                  </span>
+                  <span className="ml-1 font-mono text-purple-900 dark:text-purple-100">
+                    ${getAssetBalance("SOL").toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Links - Show when not on dashboard or when on mobile */}
+          <div
+            className={`hidden md:flex items-center gap-6 ${
+              isAuthenticated && location === "/dashboard" ? "lg:hidden" : ""
+            }`}
+          >
             <Link href="/" data-testid="link-home-nav">
               <span
                 className={`text-sm font-medium hover:text-primary transition-colors cursor-pointer ${
@@ -88,22 +213,135 @@ export function Navbar() {
                     variant="ghost"
                     size="sm"
                     data-testid="user-menu"
-                    className="max-w-[120px] sm:max-w-none"
+                    className="max-w-[120px] sm:max-w-none gap-1 sm:gap-2"
                   >
-                    <User className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <User className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span className="truncate text-xs sm:text-sm">
-                      {user?.email}
+                      {user?.email?.split("@")[0] || "User"}
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-72">
+                  <DropdownMenuLabel className="text-sm font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user?.email?.split("@")[0] || "User"}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+
+                  <DropdownMenuSeparator />
+
+                  {/* KYC Status Section */}
+                  <DropdownMenuItem
+                    onClick={() => setLocation("/kyc")}
+                    className="flex-col items-start space-y-1 py-3"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        <span className="text-sm font-medium">
+                          KYC Verification
+                        </span>
+                      </div>
+                      <Badge
+                        variant={
+                          kycInfo.isVerified
+                            ? "default"
+                            : kycInfo.kycStatus === "pending"
+                            ? "secondary"
+                            : kycInfo.kycStatus === "rejected"
+                            ? "destructive"
+                            : "outline"
+                        }
+                        className="text-xs"
+                      >
+                        {kycInfo.isVerified ? (
+                          <div className="flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Verified
+                          </div>
+                        ) : kycInfo.kycStatus === "pending" ? (
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Pending
+                          </div>
+                        ) : kycInfo.kycStatus === "rejected" ? (
+                          <div className="flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Rejected
+                          </div>
+                        ) : (
+                          "Not Submitted"
+                        )}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {kycInfo.isVerified
+                        ? "Your identity has been verified"
+                        : kycInfo.kycStatus === "pending"
+                        ? "Your KYC is under review"
+                        : kycInfo.kycStatus === "rejected"
+                        ? "Please resubmit your KYC"
+                        : "Complete your identity verification"}
+                    </p>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator />
+
+                  {/* Logout */}
                   <DropdownMenuItem
                     onClick={logout}
                     data-testid="logout-button"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
-                    Logout
+                    <span>Logout</span>
                   </DropdownMenuItem>
+
+                  <DropdownMenuSeparator />
+
+                  {/* Delete Account */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        className="text-destructive focus:text-destructive"
+                        data-testid="delete-account-button"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        <span>Delete Account</span>
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Are you absolutely sure?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently
+                          delete your account and remove all your data from our
+                          servers, including:
+                          <br />• All investment history
+                          <br />• Transaction records
+                          <br />• Account balance
+                          <br />• KYC verification status
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteAccount}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete Account
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (

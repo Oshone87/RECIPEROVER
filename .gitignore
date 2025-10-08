@@ -7,3 +7,23 @@ vite.config.ts.*
 .local/
 .replit
 *.bin
+
+# Large files and temporary assets
+attached_assets/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+*.ico
+*.mp4
+*.mov
+*.avi
+
+# Development temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+*.log

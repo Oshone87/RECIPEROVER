@@ -1,5 +1,4 @@
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 
 interface TierCardProps {
@@ -20,6 +19,7 @@ export function TierCard({
   onSelect,
 }: TierCardProps) {
   const tierColors = {
+    Bronze: "from-amber-600 to-amber-800",
     Silver: "from-slate-400 to-slate-600",
     Gold: "from-yellow-400 to-yellow-600",
     Platinum: "from-blue-400 to-blue-600",
@@ -27,24 +27,27 @@ export function TierCard({
 
   return (
     <Card
-      className={`p-4 sm:p-6 lg:p-8 relative overflow-hidden ${
+      className={`p-4 sm:p-6 lg:p-8 relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer group ${
         highlighted ? "ring-2 ring-primary shadow-xl shadow-primary/20" : ""
       }`}
+      onClick={() => onSelect?.()}
     >
       <div
         className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${
           tierColors[tier as keyof typeof tierColors]
-        }`}
+        } group-hover:h-2 transition-all duration-300`}
       />
 
       <div className="space-y-4 sm:space-y-6">
         <div>
-          <h3 className="text-xl sm:text-2xl font-bold mb-2">{tier}</h3>
+          <h3 className="text-xl sm:text-2xl font-bold mb-2 group-hover:text-primary transition-colors duration-300">
+            {tier}
+          </h3>
           <div className="flex items-baseline gap-1">
             <span className="text-xs sm:text-sm text-muted-foreground">
               Min
             </span>
-            <span className="text-2xl sm:text-3xl font-bold font-mono">
+            <span className="text-2xl sm:text-3xl font-bold font-mono group-hover:text-primary transition-colors duration-300">
               ${minimum.toLocaleString()}
             </span>
           </div>
@@ -52,7 +55,7 @@ export function TierCard({
 
         <div className="py-3 sm:py-4 border-y">
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl sm:text-5xl font-bold text-chart-2 font-mono">
+            <span className="text-4xl sm:text-5xl font-bold text-chart-2 font-mono group-hover:scale-110 transition-transform duration-300 inline-block">
               {apr}%
             </span>
             <span className="text-sm sm:text-base text-muted-foreground">
@@ -71,16 +74,6 @@ export function TierCard({
             </li>
           ))}
         </ul>
-
-        <Button
-          variant={highlighted ? "default" : "outline"}
-          className="w-full"
-          size="lg"
-          onClick={() => onSelect?.()}
-          data-testid={`button-start-${tier.toLowerCase()}`}
-        >
-          <span className="text-sm sm:text-base">Start Investing</span>
-        </Button>
       </div>
     </Card>
   );

@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
 import { TierCard } from "./TierCard";
 import { SiBitcoin, SiEthereum } from "react-icons/si";
+import { TbCurrencySolana } from "react-icons/tb";
 import { DollarSign, Copy, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useInvestment } from "@/contexts/InvestmentContext";
@@ -23,7 +24,7 @@ const TIERS = {
     label: "Silver",
     min: 1000,
     apr: 24.0, // 2400% APR - doubles money in 30 days
-    features: ["BTC, ETH, USDC", "30-365 day terms", "Email support"],
+    features: ["BTC, ETH, SOL", "30-365 day terms", "Email support"],
   },
   gold: {
     label: "Gold",
@@ -44,19 +45,19 @@ const ASSETS = [
     id: "BTC",
     name: "Bitcoin",
     icon: SiBitcoin,
-    walletAddress: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+    walletAddress: "3H2CW2w8eiCnytfF57Tyk4sxxZwbr9aQCx",
   },
   {
     id: "ETH",
     name: "Ethereum",
     icon: SiEthereum,
-    walletAddress: "0x742d35Cc6734C0532925a3b8D0C1dC3F2E8a2C2a",
+    walletAddress: "0x275CDF33a56400f3164AA34831027f7b5A42ABb4",
   },
   {
-    id: "USDC",
-    name: "USD Coin",
-    icon: DollarSign,
-    walletAddress: "0x742d35Cc6734C0532925a3b8D0C1dC3F2E8a2C2a",
+    id: "SOL",
+    name: "Solana",
+    icon: TbCurrencySolana,
+    walletAddress: "8XoKp527ERexxMC9QxL4soXHRvwKdCj2wmNK3iBdNxVE",
   },
 ];
 
@@ -79,6 +80,7 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
     balance,
     createInvestment,
     getAvailableBalance,
+    getAssetBalance,
     createDepositRequest,
   } = useInvestment();
   const { user } = useAuth();
@@ -87,8 +89,8 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
   const selectedAsset = ASSETS.find((a) => a.id === asset);
   const interest = amount * (selectedTier.apr / 365) * period;
   const total = amount + interest;
-  const availableBalance = getAvailableBalance();
-  const needsDeposit = amount > availableBalance;
+  const assetBalance = getAssetBalance(asset); // Get balance for specific asset
+  const needsDeposit = amount > assetBalance; // Check against asset-specific balance
 
   const copyWalletAddress = () => {
     if (selectedAsset) {
@@ -103,7 +105,7 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
   };
 
   const handleDepositSubmit = () => {
-    const depositAmount = amount - availableBalance; // Only deposit what's needed
+    const depositAmount = amount - assetBalance; // Only deposit what's needed for this specific asset
     createDepositRequest(depositAmount, asset, transactionHash);
 
     toast({
@@ -133,11 +135,11 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
   };
 
   const handleConfirm = () => {
-    // Check if user has sufficient balance
-    if (amount > availableBalance) {
+    // Check if user has sufficient balance in the specific asset
+    if (amount > assetBalance) {
       toast({
         title: "Insufficient funds",
-        description: `You only have $${availableBalance.toLocaleString()} available. Please deposit more funds first.`,
+        description: `You only have $${assetBalance.toLocaleString()} in ${asset}. Please deposit more ${asset} first.`,
         variant: "destructive",
       });
       return;
@@ -224,12 +226,59 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
 
           {step === 2 && (
             <div className="space-y-4">
+              <h3 className="font-semibold">Choose Asset to Invest</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {ASSETS.map((a) => {
+                  const balance = getAssetBalance(a.id);
+                  return (
+                    <Card
+                      key={a.id}
+                      className={`p-6 cursor-pointer hover-elevate transition-all ${
+                        asset === a.id ? "ring-2 ring-primary" : ""
+                      }`}
+                      onClick={() => {
+                        setAsset(a.id);
+                        // Reset amount to minimum when asset changes
+                        setAmount(selectedTier.min);
+                      }}
+                      data-testid={`card-asset-${a.id.toLowerCase()}`}
+                    >
+                      <div className="flex flex-col items-center gap-3">
+                        <a.icon className="h-10 w-10" />
+                        <div className="text-center">
+                          <span className="font-semibold block">{a.name}</span>
+                          <span className="text-sm text-muted-foreground block mt-1">
+                            Available: ${balance.toLocaleString()}
+                          </span>
+                          {balance === 0 && (
+                            <span className="text-xs text-red-500 block mt-1">
+                              No balance - deposit needed
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>Note:</strong> You can only invest using the
+                  cryptocurrency you select. Make sure you have sufficient
+                  balance in that specific asset.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4">
               <h3 className="font-semibold">Enter Investment Amount</h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Amount (USD)</Label>
                   <span className="text-sm text-muted-foreground">
-                    Available: ${availableBalance.toLocaleString()}
+                    Available in {asset}: ${assetBalance.toLocaleString()}
                   </span>
                 </div>
                 <Input
@@ -237,44 +286,23 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
                   min={selectedTier.min}
+                  max={assetBalance}
                   data-testid="input-investment-amount"
                 />
-                <p className="text-sm text-muted-foreground">
-                  Minimum: ${selectedTier.min.toLocaleString()}
-                </p>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Minimum: ${selectedTier.min.toLocaleString()}</span>
+                  <span>Maximum: ${assetBalance.toLocaleString()}</span>
+                </div>
                 {needsDeposit && (
                   <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                      <strong>Deposit Required:</strong> You need to deposit an
-                      additional ${(amount - availableBalance).toLocaleString()}{" "}
-                      to proceed with this investment. You'll be guided through
-                      the deposit process.
+                      <strong>Deposit Required:</strong> You need $
+                      {(amount - assetBalance).toLocaleString()} more in {asset}{" "}
+                      to proceed with this investment. You currently have $
+                      {assetBalance.toLocaleString()} in {asset}.
                     </p>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
-              <h3 className="font-semibold">Choose Asset</h3>
-              <div className="grid grid-cols-3 gap-4">
-                {ASSETS.map((a) => (
-                  <Card
-                    key={a.id}
-                    className={`p-6 cursor-pointer hover-elevate ${
-                      asset === a.id ? "ring-2 ring-primary" : ""
-                    }`}
-                    onClick={() => setAsset(a.id)}
-                    data-testid={`card-asset-${a.id.toLowerCase()}`}
-                  >
-                    <div className="flex flex-col items-center gap-3">
-                      <a.icon className="h-10 w-10" />
-                      <span className="font-semibold">{a.name}</span>
-                    </div>
-                  </Card>
-                ))}
               </div>
             </div>
           )}
@@ -287,13 +315,12 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                   {selectedAsset && <selectedAsset.icon className="h-8 w-8" />}
                   <div>
                     <h4 className="font-semibold">
-                      Deposit ${(amount - availableBalance).toLocaleString()} in{" "}
+                      Deposit ${(amount - assetBalance).toLocaleString()} in{" "}
                       {selectedAsset?.name}
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      Send exactly $
-                      {(amount - availableBalance).toLocaleString()} worth of{" "}
-                      {asset} to this address
+                      Send exactly ${(amount - assetBalance).toLocaleString()}{" "}
+                      worth of {asset} to this address
                     </p>
                   </div>
                 </div>
@@ -344,8 +371,8 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                       <ul className="text-orange-700 dark:text-orange-300 space-y-1">
                         <li>
                           • Send exactly $
-                          {(amount - availableBalance).toLocaleString()} worth
-                          of {asset} to the provided address
+                          {(amount - assetBalance).toLocaleString()} worth of{" "}
+                          {asset} to the provided address
                         </li>
                         <li>
                           • Double-check the wallet address before sending
@@ -495,7 +522,7 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                       Deposit Amount:
                     </span>
                     <span className="font-mono font-medium">
-                      ${(amount - availableBalance).toLocaleString()}
+                      ${(amount - assetBalance).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -554,7 +581,8 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
             }}
             disabled={
               (step === 4 && needsDeposit && !walletCopied) ||
-              (step < getMaxStep() && step === 2 && amount < selectedTier.min)
+              (step === 3 && amount < selectedTier.min) ||
+              (step === 3 && amount > assetBalance && !needsDeposit)
             }
             data-testid="button-modal-next"
           >

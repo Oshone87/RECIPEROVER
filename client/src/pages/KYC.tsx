@@ -63,25 +63,60 @@ export default function KYC() {
 
     setIsSubmitting(true);
 
-    // Simulate verification process
+    // Create KYC request for admin approval
+    const kycRequest = {
+      id: `kyc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: user?.id || "",
+      userEmail: user?.email || "",
+      firstName: fullName.split(" ")[0] || "",
+      lastName: fullName.split(" ").slice(1).join(" ") || "",
+      dateOfBirth,
+      address: address,
+      city: "Not specified", // You may want to add separate city field
+      country: "Not specified", // You may want to add separate country field
+      phoneNumber: "Not specified", // You may want to add phone field
+      documentType: "ID Document",
+      documentNumber: "Not specified", // You may want to add document number field
+      documentFront: idImage,
+      documentBack: null,
+      selfiePhoto: selfieImage,
+      submissionDate: new Date().toISOString(),
+      status: "pending" as const,
+    };
+
+    // Save KYC request to admin system
+    const existingKycRequests = JSON.parse(
+      localStorage.getItem("adminKyc") || "[]"
+    );
+    const updatedKycRequests = [kycRequest, ...existingKycRequests];
+    localStorage.setItem("adminKyc", JSON.stringify(updatedKycRequests));
+
+    // Update user's KYC status in auth system (set to pending verification)
+    const registeredUsers = JSON.parse(
+      localStorage.getItem("registeredUsers") || "[]"
+    );
+    const updatedUsers = registeredUsers.map((u: any) =>
+      u.email === user?.email
+        ? { ...u, kycStatus: "pending", kycSubmitted: true }
+        : u
+    );
+    localStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
+
+    // Update current user session
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const updatedCurrentUser = {
+      ...currentUser,
+      kycStatus: "pending",
+      kycSubmitted: true,
+    };
+    localStorage.setItem("user", JSON.stringify(updatedCurrentUser));
+
     setTimeout(() => {
       toast({
         title: "KYC Submitted Successfully!",
         description:
-          "Your verification is being processed. You can now access your dashboard.",
+          "Your verification is being reviewed by our team. You will be notified once approved.",
       });
-
-      // Update user verification status
-      const registeredUsers = JSON.parse(
-        localStorage.getItem("registeredUsers") || "[]"
-      );
-      const updatedUsers = registeredUsers.map((u: any) =>
-        u.email === user?.email ? { ...u, isVerified: true } : u
-      );
-      localStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
-
-      const updatedUser = { ...user, isVerified: true };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
 
       setIsSubmitting(false);
       setLocation("/dashboard");
@@ -330,7 +365,7 @@ export default function KYC() {
               disabled={isSubmitting || !idImage}
               data-testid="button-kyc-submit"
             >
-              {isSubmitting ? "Submitting..." : "Complete Verification"}
+              {isSubmitting ? "Submitting..." : "Submit KYC for Verification"}
             </Button>
           )}
         </div>

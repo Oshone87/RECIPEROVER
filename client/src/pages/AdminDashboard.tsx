@@ -50,14 +50,11 @@ export default function AdminDashboard() {
     users,
     getAllUsers,
     getUserById,
-    updateUserBalance,
     suspendUser,
     activateUser,
     deleteUser,
     allInvestments,
     getUserInvestments,
-    updateInvestmentAmount,
-    updateInvestmentEarnings,
     cancelInvestment,
     completeInvestment,
     allTransactions,
@@ -70,8 +67,10 @@ export default function AdminDashboard() {
     getPendingDeposits,
     verifyDeposit,
     rejectDeposit,
-    addFundsToUser,
-    deductFundsFromUser,
+    kycRequests,
+    getPendingKYC,
+    approveKYC,
+    rejectKYC,
     createManualInvestment,
     getPlatformStats,
   } = useAdmin();
@@ -79,12 +78,6 @@ export default function AdminDashboard() {
   const { toast } = useToast();
 
   // State for various modals and forms
-  const [selectedUser, setSelectedUser] = useState<string>("");
-  const [fundsAmount, setFundsAmount] = useState<string>("");
-  const [fundsReason, setFundsReason] = useState<string>("");
-  const [selectedInvestment, setSelectedInvestment] = useState<string>("");
-  const [newInvestmentAmount, setNewInvestmentAmount] = useState<string>("");
-  const [newEarnings, setNewEarnings] = useState<string>("");
   const [modalOpen, setModalOpen] = useState<string>("");
 
   // Check admin access
@@ -112,66 +105,23 @@ export default function AdminDashboard() {
   const stats = getPlatformStats();
   const pendingWithdrawals = getPendingWithdrawals();
   const pendingDeposits = getPendingDeposits();
+  const pendingKyc = getPendingKYC();
 
-  const handleAddFunds = () => {
-    if (selectedUser && fundsAmount && fundsReason) {
-      addFundsToUser(selectedUser, parseFloat(fundsAmount), fundsReason);
-      toast({
-        title: "Funds Added",
-        description: `$${parseFloat(
-          fundsAmount
-        ).toLocaleString()} added to user account.`,
-      });
-      setSelectedUser("");
-      setFundsAmount("");
-      setFundsReason("");
-      setModalOpen("");
-    }
+  const handleApproveKYC = (requestId: string) => {
+    approveKYC(requestId, "KYC approved by admin");
+    toast({
+      title: "KYC Approved",
+      description:
+        "KYC verification has been approved and user is now verified.",
+    });
   };
 
-  const handleDeductFunds = () => {
-    if (selectedUser && fundsAmount && fundsReason) {
-      deductFundsFromUser(selectedUser, parseFloat(fundsAmount), fundsReason);
-      toast({
-        title: "Funds Deducted",
-        description: `$${parseFloat(
-          fundsAmount
-        ).toLocaleString()} deducted from user account.`,
-      });
-      setSelectedUser("");
-      setFundsAmount("");
-      setFundsReason("");
-      setModalOpen("");
-    }
-  };
-
-  const handleUpdateInvestment = () => {
-    if (selectedInvestment && newInvestmentAmount) {
-      updateInvestmentAmount(
-        selectedInvestment,
-        parseFloat(newInvestmentAmount)
-      );
-      toast({
-        title: "Investment Updated",
-        description: "Investment amount has been updated successfully.",
-      });
-      setSelectedInvestment("");
-      setNewInvestmentAmount("");
-      setModalOpen("");
-    }
-  };
-
-  const handleUpdateEarnings = () => {
-    if (selectedInvestment && newEarnings) {
-      updateInvestmentEarnings(selectedInvestment, parseFloat(newEarnings));
-      toast({
-        title: "Earnings Updated",
-        description: "Investment earnings have been updated successfully.",
-      });
-      setSelectedInvestment("");
-      setNewEarnings("");
-      setModalOpen("");
-    }
+  const handleRejectKYC = (requestId: string) => {
+    rejectKYC(requestId, "KYC rejected by admin");
+    toast({
+      title: "KYC Rejected",
+      description: "KYC verification has been rejected.",
+    });
   };
 
   const handleApproveWithdrawal = (requestId: string) => {
@@ -362,12 +312,15 @@ export default function AdminDashboard() {
         <Tabs defaultValue="users" className="space-y-4 sm:space-y-6">
           {/* Mobile: Stacked Layout */}
           <div className="block sm:hidden">
-            <TabsList className="grid w-full grid-cols-3 gap-1">
+            <TabsList className="grid w-full grid-cols-4 gap-1">
               <TabsTrigger value="users" className="text-xs px-2 py-2">
                 Users
               </TabsTrigger>
               <TabsTrigger value="investments" className="text-xs px-2 py-2">
                 Invest
+              </TabsTrigger>
+              <TabsTrigger value="kyc" className="text-xs px-2 py-2">
+                KYC
               </TabsTrigger>
               <TabsTrigger value="actions" className="text-xs px-2 py-2">
                 Actions
@@ -390,12 +343,15 @@ export default function AdminDashboard() {
 
           {/* Desktop: Single Row Layout */}
           <div className="hidden sm:block">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="users" className="text-sm px-3">
                 Users
               </TabsTrigger>
               <TabsTrigger value="investments" className="text-sm px-3">
                 Investments
+              </TabsTrigger>
+              <TabsTrigger value="kyc" className="text-sm px-3">
+                KYC Requests
               </TabsTrigger>
               <TabsTrigger value="withdrawals" className="text-sm px-3">
                 Withdrawals
@@ -419,137 +375,9 @@ export default function AdminDashboard() {
                 <h2 className="text-xl sm:text-2xl font-bold">
                   User Management
                 </h2>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Dialog
-                    open={modalOpen === "add-funds"}
-                    onOpenChange={(open) =>
-                      setModalOpen(open ? "add-funds" : "")
-                    }
-                  >
-                    <DialogTrigger asChild>
-                      <Button className="w-full sm:w-auto" size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        <span className="text-sm">Add Funds</span>
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-lg mx-4">
-                      <DialogHeader>
-                        <DialogTitle className="text-lg">
-                          Add Funds to User
-                        </DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label className="text-sm font-medium">
-                            Select User
-                          </Label>
-                          <Select
-                            value={selectedUser}
-                            onValueChange={setSelectedUser}
-                          >
-                            <SelectTrigger className="h-12">
-                              <SelectValue placeholder="Choose user" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {users.map((user) => (
-                                <SelectItem key={user.id} value={user.id}>
-                                  <span className="text-sm">
-                                    {user.name} ({user.email})
-                                  </span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium">
-                            Amount ($)
-                          </Label>
-                          <Input
-                            type="number"
-                            value={fundsAmount}
-                            onChange={(e) => setFundsAmount(e.target.value)}
-                            placeholder="Enter amount"
-                            className="h-12"
-                          />
-                        </div>
-                        <div>
-                          <Label>Reason</Label>
-                          <Textarea
-                            value={fundsReason}
-                            onChange={(e) => setFundsReason(e.target.value)}
-                            placeholder="Reason for adding funds"
-                          />
-                        </div>
-                        <Button onClick={handleAddFunds} className="w-full">
-                          Add Funds
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-
-                  <Dialog
-                    open={modalOpen === "deduct-funds"}
-                    onOpenChange={(open) =>
-                      setModalOpen(open ? "deduct-funds" : "")
-                    }
-                  >
-                    <DialogTrigger asChild>
-                      <Button variant="outline">
-                        <Minus className="h-4 w-4 mr-2" />
-                        Deduct Funds
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-lg mx-4">
-                      <DialogHeader>
-                        <DialogTitle>Deduct Funds from User</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label>Select User</Label>
-                          <Select
-                            value={selectedUser}
-                            onValueChange={setSelectedUser}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose user" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {users.map((user) => (
-                                <SelectItem key={user.id} value={user.id}>
-                                  {user.name} ({user.email})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>Amount ($)</Label>
-                          <Input
-                            type="number"
-                            value={fundsAmount}
-                            onChange={(e) => setFundsAmount(e.target.value)}
-                            placeholder="Enter amount"
-                          />
-                        </div>
-                        <div>
-                          <Label>Reason</Label>
-                          <Textarea
-                            value={fundsReason}
-                            onChange={(e) => setFundsReason(e.target.value)}
-                            placeholder="Reason for deducting funds"
-                          />
-                        </div>
-                        <Button
-                          onClick={handleDeductFunds}
-                          variant="destructive"
-                          className="w-full"
-                        >
-                          Deduct Funds
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                <div className="text-sm text-muted-foreground">
+                  User management through automated system only. Manual fund
+                  manipulation is disabled.
                 </div>
               </div>
 
@@ -762,131 +590,9 @@ export default function AdminDashboard() {
                 <h2 className="text-xl sm:text-2xl font-bold">
                   Investment Management
                 </h2>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Dialog
-                    open={modalOpen === "update-investment"}
-                    onOpenChange={(open) =>
-                      setModalOpen(open ? "update-investment" : "")
-                    }
-                  >
-                    <DialogTrigger asChild>
-                      <Button className="w-full sm:w-auto">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Update Investment
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-lg mx-4">
-                      <DialogHeader>
-                        <DialogTitle>Update Investment Amount</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label>Select Investment</Label>
-                          <Select
-                            value={selectedInvestment}
-                            onValueChange={setSelectedInvestment}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose investment" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {allInvestments
-                                .filter((inv) => inv.status === "active")
-                                .map((investment) => (
-                                  <SelectItem
-                                    key={investment.id}
-                                    value={investment.id}
-                                  >
-                                    {investment.userEmail} - {investment.tier}{" "}
-                                    {investment.asset} ($
-                                    {investment.amount.toLocaleString()})
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>New Amount ($)</Label>
-                          <Input
-                            type="number"
-                            value={newInvestmentAmount}
-                            onChange={(e) =>
-                              setNewInvestmentAmount(e.target.value)
-                            }
-                            placeholder="Enter new amount"
-                          />
-                        </div>
-                        <Button
-                          onClick={handleUpdateInvestment}
-                          className="w-full"
-                        >
-                          Update Amount
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-
-                  <Dialog
-                    open={modalOpen === "update-earnings"}
-                    onOpenChange={(open) =>
-                      setModalOpen(open ? "update-earnings" : "")
-                    }
-                  >
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full sm:w-auto">
-                        <TrendingUp className="h-4 w-4 mr-2" />
-                        Update Earnings
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-lg mx-4">
-                      <DialogHeader>
-                        <DialogTitle>Update Investment Earnings</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label>Select Investment</Label>
-                          <Select
-                            value={selectedInvestment}
-                            onValueChange={setSelectedInvestment}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose investment" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {allInvestments
-                                .filter((inv) => inv.status === "active")
-                                .map((investment) => (
-                                  <SelectItem
-                                    key={investment.id}
-                                    value={investment.id}
-                                  >
-                                    {investment.userEmail} - {investment.tier}{" "}
-                                    {investment.asset} ($
-                                    {investment.earned.toFixed(2)} earned)
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>New Earnings ($)</Label>
-                          <Input
-                            type="number"
-                            value={newEarnings}
-                            onChange={(e) => setNewEarnings(e.target.value)}
-                            placeholder="Enter new earnings amount"
-                            step="0.01"
-                          />
-                        </div>
-                        <Button
-                          onClick={handleUpdateEarnings}
-                          className="w-full"
-                        >
-                          Update Earnings
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                <div className="text-sm text-muted-foreground">
+                  Investment oversight through automated system only. Manual
+                  investment manipulation is disabled.
                 </div>
               </div>
 
@@ -1087,6 +793,193 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* KYC Requests Tab */}
+          <TabsContent value="kyc">
+            <Card className="p-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold">
+                  KYC Verification Requests
+                </h2>
+                <div className="text-sm text-muted-foreground">
+                  Review and approve user identity verification documents.
+                </div>
+              </div>
+
+              {/* Mobile Card Layout */}
+              <div className="block lg:hidden space-y-4">
+                {pendingKyc.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No pending KYC requests
+                  </div>
+                ) : (
+                  pendingKyc.map((request) => (
+                    <Card key={request.id} className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold text-sm">
+                              {request.userEmail}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {request.firstName} {request.lastName}
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className="text-xs">
+                            {request.status}
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <p className="text-muted-foreground">Document</p>
+                            <p className="font-semibold">
+                              {request.documentType}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Country</p>
+                            <p className="font-semibold">{request.country}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Phone</p>
+                            <p className="font-semibold">
+                              {request.phoneNumber}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Submitted</p>
+                            <p className="font-semibold">
+                              {new Date(
+                                request.submissionDate
+                              ).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-xs">
+                          <p className="text-muted-foreground mb-1">Address</p>
+                          <p className="font-semibold">
+                            {request.address}, {request.city}, {request.country}
+                          </p>
+                        </div>
+
+                        {request.status === "pending" && (
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveKYC(request.id)}
+                              className="flex-1 h-8"
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              <span className="text-xs">Approve</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRejectKYC(request.id)}
+                              className="flex-1 h-8"
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              <span className="text-xs">Reject</span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden lg:block overflow-x-auto">
+                {pendingKyc.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No pending KYC requests
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 text-sm">User</th>
+                        <th className="text-left py-3 px-4 text-sm">
+                          Document
+                        </th>
+                        <th className="text-left py-3 px-4 text-sm">Country</th>
+                        <th className="text-left py-3 px-4 text-sm">Phone</th>
+                        <th className="text-left py-3 px-4 text-sm">
+                          Submitted
+                        </th>
+                        <th className="text-left py-3 px-4 text-sm">Status</th>
+                        <th className="text-left py-3 px-4 text-sm">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingKyc.map((request) => (
+                        <tr
+                          key={request.id}
+                          className="border-b hover:bg-muted/50"
+                        >
+                          <td className="py-3 px-4">
+                            <div>
+                              <p className="font-semibold text-sm">
+                                {request.userEmail}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {request.firstName} {request.lastName}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {request.documentType}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {request.country}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {request.phoneNumber}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {new Date(
+                              request.submissionDate
+                            ).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge variant="secondary" className="text-xs">
+                              {request.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            {request.status === "pending" && (
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleApproveKYC(request.id)}
+                                  className="h-8"
+                                >
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleRejectKYC(request.id)}
+                                  className="h-8"
+                                >
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  Reject
+                                </Button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </Card>
           </TabsContent>
@@ -1610,39 +1503,31 @@ export default function AdminDashboard() {
           <TabsContent value="actions">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <Card className="p-4 sm:p-6">
-                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                <h3 className="text-lg font-semibold mb-4">System Status</h3>
                 <div className="space-y-3">
-                  <Button
-                    className="w-full justify-start"
-                    onClick={() => setModalOpen("add-funds")}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Funds to User
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={() => setModalOpen("deduct-funds")}
-                  >
-                    <Minus className="h-4 w-4 mr-2" />
-                    Deduct Funds from User
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={() => setModalOpen("update-investment")}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Update Investment
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={() => setModalOpen("update-earnings")}
-                  >
-                    <TrendingUp className="h-4 w-4 mr-2" />
-                    Update Earnings
-                  </Button>
+                  <div className="text-sm text-muted-foreground">
+                    All user operations are managed through automated systems.
+                    Manual interventions have been disabled for platform
+                    integrity.
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                      <div className="text-lg font-bold text-green-600">
+                        {stats.totalUsers}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Total Users
+                      </div>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                      <div className="text-lg font-bold text-blue-600">
+                        {stats.totalInvestments}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Active Investments
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </Card>
 
@@ -1664,6 +1549,13 @@ export default function AdminDashboard() {
                       <span className="text-sm">Pending Deposits</span>
                     </div>
                     <Badge variant="secondary">{stats.pendingDeposits}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-yellow-600" />
+                      <span className="text-sm">Pending KYC</span>
+                    </div>
+                    <Badge variant="secondary">{pendingKyc.length}</Badge>
                   </div>
                 </div>
               </Card>

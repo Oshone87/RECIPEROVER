@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { SiBitcoin, SiEthereum } from "react-icons/si";
+import { TbCurrencySolana } from "react-icons/tb";
 import { DollarSign, AlertTriangle, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,7 +26,7 @@ import { useInvestment } from "@/contexts/InvestmentContext";
 const WITHDRAWAL_ASSETS = [
   { id: "BTC", name: "Bitcoin", icon: SiBitcoin, fee: "0.0005 BTC" },
   { id: "ETH", name: "Ethereum", icon: SiEthereum, fee: "0.01 ETH" },
-  { id: "USDC", name: "USD Coin", icon: DollarSign, fee: "2 USDC" },
+  { id: "SOL", name: "Solana", icon: TbCurrencySolana, fee: "0.001 SOL" },
 ];
 
 interface WithdrawalModalProps {
@@ -53,6 +54,25 @@ export function WithdrawalModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check KYC verification status
+    const registeredUsers = JSON.parse(
+      localStorage.getItem("registeredUsers") || "[]"
+    );
+    const currentUser = registeredUsers.find(
+      (u: any) => u.email === user?.email
+    );
+    const isKycVerified = currentUser?.isVerified || false;
+
+    if (!isKycVerified) {
+      toast({
+        title: "KYC Verification Required",
+        description:
+          "You must complete and have your KYC verification approved before making withdrawals.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!walletAddress || !amount) {
       toast({

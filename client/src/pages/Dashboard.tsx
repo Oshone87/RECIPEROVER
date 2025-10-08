@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { CryptoChart } from "@/components/CryptoChart";
+import { InvestmentGrowthChart } from "@/components/InvestmentGrowthChart";
 import { InvestmentModal } from "@/components/InvestmentModal";
 import { WithdrawalModal } from "@/components/WithdrawalModal";
 import { DepositModal } from "@/components/DepositModal";
@@ -16,30 +16,52 @@ import {
   ArrowDownRight,
   Wallet,
   Upload,
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInvestment } from "@/contexts/InvestmentContext";
 import { useToast } from "@/hooks/use-toast";
+import { SiBitcoin, SiEthereum } from "react-icons/si";
+import { TbCurrencySolana } from "react-icons/tb";
 
 export default function Dashboard() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const {
     balance,
+    assetBalances,
     investments,
     transactions,
     getTotalInvested,
     getTotalEarnings,
     getActiveInvestments,
     getAvailableBalance,
+    getAssetBalance,
   } = useInvestment();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [selectedAsset, setSelectedAsset] = useState<
-    "BTC" | "ETH" | "USDT" | "ADA" | "SOL"
-  >("BTC");
   const [modalOpen, setModalOpen] = useState(false);
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+
+  // Get user's KYC status
+  const getUserKycStatus = () => {
+    const registeredUsers = JSON.parse(
+      localStorage.getItem("registeredUsers") || "[]"
+    );
+    const currentUser = registeredUsers.find(
+      (u: any) => u.email === user?.email
+    );
+    return {
+      isVerified: currentUser?.isVerified || false,
+      kycStatus: currentUser?.kycStatus || "not_submitted",
+      kycSubmitted: currentUser?.kycSubmitted || false,
+    };
+  };
+
+  const kycInfo = getUserKycStatus();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -53,8 +75,6 @@ export default function Dashboard() {
 
   const totalBalance = balance + getTotalInvested() + getTotalEarnings();
   const availableBalance = getAvailableBalance();
-  const activeInvestmentList = getActiveInvestments();
-  const totalEarnings = getTotalEarnings();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -75,7 +95,9 @@ export default function Dashboard() {
 
             <div className="flex justify-center sm:justify-start gap-4 sm:gap-6">
               <div className="space-y-1 text-center sm:text-left">
-                <p className="text-xs sm:text-sm opacity-90">Available</p>
+                <p className="text-xs sm:text-sm opacity-90">
+                  Available Balance
+                </p>
                 <p
                   className="text-lg sm:text-2xl font-mono"
                   data-testid="text-available-balance"
@@ -84,14 +106,12 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="space-y-1 text-center sm:text-left">
-                <p className="text-xs sm:text-sm opacity-90">
-                  Active Investments
-                </p>
+                <p className="text-xs sm:text-sm opacity-90">Total Invested</p>
                 <p
                   className="text-lg sm:text-2xl font-mono"
-                  data-testid="text-active-investments"
+                  data-testid="text-total-invested"
                 >
-                  {activeInvestmentList.length}
+                  ${getTotalInvested().toLocaleString()}
                 </p>
               </div>
             </div>
@@ -112,11 +132,15 @@ export default function Dashboard() {
                 size="lg"
                 variant="secondary"
                 onClick={() => {
-                  if (availableBalance <= 0) {
+                  const totalAssetBalance =
+                    getAssetBalance("BTC") +
+                    getAssetBalance("ETH") +
+                    getAssetBalance("SOL");
+                  if (totalAssetBalance <= 0) {
                     toast({
-                      title: "No funds available",
+                      title: "No crypto assets available",
                       description:
-                        "Please deposit funds first before making investments.",
+                        "Please deposit cryptocurrency assets (BTC, ETH, or SOL) first before making investments.",
                       variant: "destructive",
                     });
                     return;
@@ -133,7 +157,18 @@ export default function Dashboard() {
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => setWithdrawalModalOpen(true)}
+                onClick={() => {
+                  if (!kycInfo.isVerified) {
+                    toast({
+                      title: "KYC Verification Required",
+                      description:
+                        "You must complete and have your KYC verification approved before making withdrawals.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setWithdrawalModalOpen(true);
+                }}
                 disabled={availableBalance <= 0}
                 data-testid="button-withdraw"
                 className="w-full sm:w-auto"
@@ -148,143 +183,13 @@ export default function Dashboard() {
 
       <div className="flex-1 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-              <Card className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3 sm:gap-0">
-                  <h2 className="text-lg sm:text-xl font-bold">
-                    Live Market Chart
-                  </h2>
-                  <Tabs
-                    value={selectedAsset}
-                    onValueChange={(v) =>
-                      setSelectedAsset(
-                        v as "BTC" | "ETH" | "USDT" | "ADA" | "SOL"
-                      )
-                    }
-                  >
-                    <TabsList className="grid grid-cols-5 w-full sm:w-auto">
-                      <TabsTrigger
-                        value="BTC"
-                        data-testid="tab-btc"
-                        className="text-xs sm:text-sm"
-                      >
-                        BTC
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="ETH"
-                        data-testid="tab-eth"
-                        className="text-xs sm:text-sm"
-                      >
-                        ETH
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="USDT"
-                        data-testid="tab-usdt"
-                        className="text-xs sm:text-sm"
-                      >
-                        USDT
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="ADA"
-                        data-testid="tab-ada"
-                        className="text-xs sm:text-sm"
-                      >
-                        ADA
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="SOL"
-                        data-testid="tab-sol"
-                        className="text-xs sm:text-sm"
-                      >
-                        SOL
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                <CryptoChart asset={selectedAsset} height={300} />
-              </Card>
-            </div>
+          {/* Investment Growth Chart - Full Width */}
+          <Card className="p-4 sm:p-6 mb-6 sm:mb-8">
+            <InvestmentGrowthChart />
+          </Card>
 
-            <div className="space-y-4 sm:space-y-6">
-              <Card className="p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-bold mb-4">
-                  Active Investments
-                </h2>
-                <div className="space-y-3 sm:space-y-4">
-                  {activeInvestmentList.length > 0 ? (
-                    activeInvestmentList.map((inv) => {
-                      const daysLeft = Math.ceil(
-                        (new Date(inv.endDate).getTime() -
-                          new Date().getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      );
-                      return (
-                        <div key={inv.id} className="space-y-2">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-semibold">
-                                {inv.tier} - {inv.asset}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                ${inv.amount.toLocaleString()}
-                              </p>
-                            </div>
-                            <Badge variant="secondary" className="text-chart-2">
-                              +${inv.earned.toFixed(2)}
-                            </Badge>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>{Math.max(0, daysLeft)} days left</span>
-                              <span>{inv.progress.toFixed(1)}%</span>
-                            </div>
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-primary transition-all"
-                                style={{
-                                  width: `${Math.min(100, inv.progress)}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No active investments yet</p>
-                      <p className="text-sm">
-                        Create your first investment to get started
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-
-              <Card className="p-6">
-                <h3 className="font-semibold mb-4">Quick Stats</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Total Earned
-                    </span>
-                    <span className="font-mono font-semibold text-chart-2">
-                      +${totalEarnings.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Avg. APR
-                    </span>
-                    <span className="font-mono font-semibold">7.5%</span>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-
-          <Card className="mt-6 sm:mt-8 p-4 sm:p-6">
+          {/* Transaction History */}
+          <Card className="p-4 sm:p-6">
             <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">
               Transaction History
             </h2>

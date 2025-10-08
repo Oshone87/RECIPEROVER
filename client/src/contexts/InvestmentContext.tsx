@@ -31,8 +31,15 @@ interface Transaction {
   description: string;
 }
 
+interface AssetBalance {
+  BTC: number;
+  ETH: number;
+  SOL: number;
+}
+
 interface InvestmentContextType {
   balance: number;
+  assetBalances: AssetBalance;
   investments: Investment[];
   transactions: Transaction[];
   createInvestment: (
@@ -45,6 +52,8 @@ interface InvestmentContextType {
   getTotalEarnings: () => number;
   getActiveInvestments: () => Investment[];
   getAvailableBalance: () => number;
+  getAssetBalance: (asset: string) => number;
+  updateAssetBalance: (asset: string, amount: number) => void;
   withdraw: (amount: number, asset: string) => boolean;
   createWithdrawalRequest: (
     amount: number,
@@ -77,7 +86,12 @@ interface InvestmentProviderProps {
 
 export function InvestmentProvider({ children }: InvestmentProviderProps) {
   const { user } = useAuth();
-  const [balance, setBalance] = useState(0); // Default starting balance of $0
+  const [balance, setBalance] = useState(0); // Total balance (sum of all assets)
+  const [assetBalances, setAssetBalances] = useState<AssetBalance>({
+    BTC: 0,
+    ETH: 0,
+    SOL: 0,
+  });
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
@@ -103,6 +117,23 @@ export function InvestmentProvider({ children }: InvestmentProviderProps) {
     // Available balance is the current balance (which already includes earnings)
     // No need to add earnings again since they're automatically added to balance
     return balance;
+  };
+
+  const getAssetBalance = (asset: string): number => {
+    return assetBalances[asset as keyof AssetBalance] || 0;
+  };
+
+  const updateAssetBalance = (asset: string, amount: number) => {
+    setAssetBalances((prev) => {
+      const newBalances = { ...prev, [asset]: amount };
+      // Update total balance as sum of all asset balances
+      const newTotalBalance = Object.values(newBalances).reduce(
+        (sum, bal) => sum + bal,
+        0
+      );
+      setBalance(newTotalBalance);
+      return newBalances;
+    });
   };
 
   // Sync current user data to admin system
@@ -181,10 +212,12 @@ export function InvestmentProvider({ children }: InvestmentProviderProps) {
     if (!user) return;
 
     const userBalanceKey = getUserStorageKey("userBalance");
+    const userAssetBalancesKey = getUserStorageKey("userAssetBalances");
     const userInvestmentsKey = getUserStorageKey("userInvestments");
     const userTransactionsKey = getUserStorageKey("userTransactions");
 
     const storedBalance = localStorage.getItem(userBalanceKey);
+    const storedAssetBalances = localStorage.getItem(userAssetBalancesKey);
     const storedInvestments = localStorage.getItem(userInvestmentsKey);
     const storedTransactions = localStorage.getItem(userTransactionsKey);
 
@@ -192,6 +225,19 @@ export function InvestmentProvider({ children }: InvestmentProviderProps) {
       setBalance(parseFloat(storedBalance));
     } else {
       setBalance(0); // Default starting balance for new users
+    }
+
+    if (storedAssetBalances) {
+      const parsedAssetBalances = JSON.parse(storedAssetBalances);
+      setAssetBalances(parsedAssetBalances);
+      // Recalculate total balance from asset balances
+      const totalFromAssets = Object.values(parsedAssetBalances).reduce(
+        (sum: number, bal: any) => sum + bal,
+        0
+      );
+      setBalance(totalFromAssets);
+    } else {
+      setAssetBalances({ BTC: 0, ETH: 0, SOL: 0 });
     }
 
     if (storedInvestments) {
@@ -273,6 +319,12 @@ export function InvestmentProvider({ children }: InvestmentProviderProps) {
     localStorage.setItem(userInvestmentsKey, JSON.stringify(investments));
     syncUserDataToAdmin();
   }, [investments, user, getUserStorageKey]);
+
+  useEffect(() => {
+    if (!user) return;
+    const userAssetBalancesKey = getUserStorageKey("userAssetBalances");
+    localStorage.setItem(userAssetBalancesKey, JSON.stringify(assetBalances));
+  }, [assetBalances, user, getUserStorageKey]);
 
   useEffect(() => {
     if (!user) return;
@@ -371,8 +423,9 @@ export function InvestmentProvider({ children }: InvestmentProviderProps) {
       "id" | "startDate" | "endDate" | "earned" | "status" | "progress"
     >
   ): boolean => {
-    if (investmentData.amount > balance) {
-      return false; // Insufficient funds
+    const assetBalance = getAssetBalance(investmentData.asset);
+    if (investmentData.amount > assetBalance) {
+      return false; // Insufficient funds in this specific asset
     }
 
     const now = new Date();
@@ -402,7 +455,10 @@ export function InvestmentProvider({ children }: InvestmentProviderProps) {
 
     setInvestments((prev) => [...prev, newInvestment]);
     setTransactions((prev) => [newTransaction, ...prev]);
-    setBalance((prev) => prev - investmentData.amount);
+
+    // Deduct from specific asset balance instead of general balance
+    const newAssetBalance = assetBalance - investmentData.amount;
+    updateAssetBalance(investmentData.asset, newAssetBalance);
 
     return true;
   };
@@ -505,6 +561,7 @@ export function InvestmentProvider({ children }: InvestmentProviderProps) {
 
   const value = {
     balance,
+    assetBalances,
     investments,
     transactions,
     createInvestment,
@@ -512,6 +569,8 @@ export function InvestmentProvider({ children }: InvestmentProviderProps) {
     getTotalEarnings,
     getActiveInvestments,
     getAvailableBalance,
+    getAssetBalance,
+    updateAssetBalance,
     withdraw,
     createWithdrawalRequest,
     updateBalance,

@@ -71,25 +71,39 @@ interface DepositRequest {
   adminNotes?: string;
 }
 
+interface KYCRequest {
+  id: string;
+  userId: string;
+  userEmail: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  address: string;
+  city: string;
+  country: string;
+  phoneNumber: string;
+  documentType: string;
+  documentNumber: string;
+  documentFront?: string;
+  documentBack?: string;
+  selfiePhoto?: string;
+  submissionDate: string;
+  status: "pending" | "approved" | "rejected";
+  adminNotes?: string;
+}
+
 interface AdminContextType {
-  // Users Management
+  // Users Management - Read-only with status control
   users: User[];
   getAllUsers: () => User[];
   getUserById: (userId: string) => User | undefined;
-  updateUserBalance: (userId: string, newBalance: number) => void;
   suspendUser: (userId: string, reason: string) => void;
   activateUser: (userId: string) => void;
   deleteUser: (userId: string) => void;
 
-  // Investments Management
+  // Investments Management - Read-only for admin oversight
   allInvestments: Investment[];
   getUserInvestments: (userId: string) => Investment[];
-  updateInvestmentAmount: (investmentId: string, newAmount: number) => void;
-  updateInvestmentEarnings: (investmentId: string, newEarnings: number) => void;
-  updateInvestmentCurrentValue: (
-    investmentId: string,
-    newCurrentValue: number
-  ) => void;
   cancelInvestment: (investmentId: string, reason: string) => void;
   completeInvestment: (investmentId: string) => void;
 
@@ -115,9 +129,13 @@ interface AdminContextType {
   verifyDeposit: (requestId: string, adminNotes?: string) => void;
   rejectDeposit: (requestId: string, reason: string) => void;
 
-  // Admin Actions
-  addFundsToUser: (userId: string, amount: number, reason: string) => void;
-  deductFundsFromUser: (userId: string, amount: number, reason: string) => void;
+  // KYC Requests
+  kycRequests: KYCRequest[];
+  getPendingKYC: () => KYCRequest[];
+  approveKYC: (requestId: string, adminNotes?: string) => void;
+  rejectKYC: (requestId: string, reason: string) => void;
+
+  // Admin Actions - Only system automated functions
   createManualInvestment: (
     userId: string,
     investmentData: Omit<
@@ -144,6 +162,7 @@ interface AdminContextType {
     totalPlatformValue: number;
     pendingWithdrawals: number;
     pendingDeposits: number;
+    pendingKyc: number;
   };
 }
 
@@ -169,6 +188,7 @@ export function AdminProvider({ children }: AdminProviderProps) {
     WithdrawalRequest[]
   >([]);
   const [depositRequests, setDepositRequests] = useState<DepositRequest[]>([]);
+  const [kycRequests, setKycRequests] = useState<KYCRequest[]>([]);
 
   // Sync users from auth system to admin system
   const syncUsersFromAuth = () => {
@@ -187,12 +207,33 @@ export function AdminProvider({ children }: AdminProviderProps) {
           (u: any) => u.id === authUser.id
         );
 
+        // Get user's current balance from InvestmentContext storage
+        const userBalance = parseFloat(
+          localStorage.getItem(`userBalance_${authUser.id}`) || "0"
+        );
+
+        // Get user's current investments from InvestmentContext storage
+        const userInvestments = JSON.parse(
+          localStorage.getItem(`userInvestments_${authUser.id}`) || "[]"
+        );
+        const totalInvested = userInvestments.reduce(
+          (sum: number, inv: any) => sum + inv.amount,
+          0
+        );
+        const totalEarnings = userInvestments.reduce(
+          (sum: number, inv: any) => sum + inv.earned,
+          0
+        );
+
         if (existingUser) {
-          // Preserve existing user data but update auth-related fields
+          // Preserve existing user data but update with real-time values
           return {
             ...existingUser,
             email: authUser.email,
             isVerified: authUser.isVerified || false,
+            balance: userBalance,
+            totalInvested: totalInvested,
+            totalEarnings: totalEarnings,
           };
         } else {
           // Create new user with default values
@@ -200,9 +241,9 @@ export function AdminProvider({ children }: AdminProviderProps) {
             id: authUser.id,
             email: authUser.email,
             name: authUser.email.split("@")[0],
-            balance: 0,
-            totalInvested: 0,
-            totalEarnings: 0,
+            balance: userBalance,
+            totalInvested: totalInvested,
+            totalEarnings: totalEarnings,
             joinDate: new Date().toISOString().split("T")[0],
             isVerified: authUser.isVerified || false,
             status: "active" as const,
@@ -222,28 +263,72 @@ export function AdminProvider({ children }: AdminProviderProps) {
     const storedTransactions = localStorage.getItem("adminTransactions");
     const storedWithdrawals = localStorage.getItem("adminWithdrawals");
     const storedDeposits = localStorage.getItem("adminDeposits");
+    const storedKyc = localStorage.getItem("adminKyc");
 
     // Always sync with registered users to ensure consistency
     syncUsersFromAuth();
 
+    // Sync investments from individual user storage
+    const syncInvestmentsFromUsers = () => {
+      const registeredUsers = JSON.parse(
+        localStorage.getItem("registeredUsers") || "[]"
+      );
+
+      let allUserInvestments: Investment[] = [];
+
+      registeredUsers.forEach((user: any) => {
+        if (user.email !== "admin@reciperover.com") {
+          const userInvestments = JSON.parse(
+            localStorage.getItem(`userInvestments_${user.id}`) || "[]"
+          );
+
+          const userInvestmentsWithMetadata = userInvestments.map(
+            (inv: any) => ({
+              ...inv,
+              userId: user.id,
+              userEmail: user.email,
+            })
+          );
+
+          allUserInvestments = [
+            ...allUserInvestments,
+            ...userInvestmentsWithMetadata,
+          ];
+        }
+      });
+
+      setAllInvestments(allUserInvestments);
+      localStorage.setItem(
+        "adminInvestments",
+        JSON.stringify(allUserInvestments)
+      );
+    };
+
     if (storedInvestments) {
       setAllInvestments(JSON.parse(storedInvestments));
     }
+
+    // Sync investments from user data
+    syncInvestmentsFromUsers();
+
     if (storedTransactions) {
       setAllTransactions(JSON.parse(storedTransactions));
     }
     if (storedWithdrawals) {
       setWithdrawalRequests(JSON.parse(storedWithdrawals));
     }
-    // Start with empty withdrawal requests
-
     if (storedDeposits) {
       setDepositRequests(JSON.parse(storedDeposits));
     }
-    // Start with empty deposit requests
+    if (storedKyc) {
+      setKycRequests(JSON.parse(storedKyc));
+    }
 
     // Set up periodic sync every 10 seconds to keep data consistent
-    const syncInterval = setInterval(syncUsersFromAuth, 10000);
+    const syncInterval = setInterval(() => {
+      syncUsersFromAuth();
+      syncInvestmentsFromUsers();
+    }, 10000);
 
     return () => clearInterval(syncInterval);
   }, []);
@@ -272,19 +357,15 @@ export function AdminProvider({ children }: AdminProviderProps) {
     localStorage.setItem("adminDeposits", JSON.stringify(depositRequests));
   }, [depositRequests]);
 
+  useEffect(() => {
+    localStorage.setItem("adminKyc", JSON.stringify(kycRequests));
+  }, [kycRequests]);
+
   // User Management Functions
   const getAllUsers = () => users;
 
   const getUserById = (userId: string) =>
     users.find((user) => user.id === userId);
-
-  const updateUserBalance = (userId: string, newBalance: number) => {
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.id === userId ? { ...user, balance: newBalance } : user
-      )
-    );
-  };
 
   const suspendUser = (userId: string, reason: string) => {
     setUsers((prev) =>
@@ -349,40 +430,6 @@ export function AdminProvider({ children }: AdminProviderProps) {
   const getUserInvestments = (userId: string) =>
     allInvestments.filter((inv) => inv.userId === userId);
 
-  const updateInvestmentAmount = (investmentId: string, newAmount: number) => {
-    setAllInvestments((prev) =>
-      prev.map((inv) =>
-        inv.id === investmentId ? { ...inv, amount: newAmount } : inv
-      )
-    );
-  };
-
-  const updateInvestmentEarnings = (
-    investmentId: string,
-    newEarnings: number
-  ) => {
-    setAllInvestments((prev) =>
-      prev.map((inv) =>
-        inv.id === investmentId ? { ...inv, earned: newEarnings } : inv
-      )
-    );
-  };
-
-  const updateInvestmentCurrentValue = (
-    investmentId: string,
-    newCurrentValue: number
-  ) => {
-    const investment = allInvestments.find((inv) => inv.id === investmentId);
-    if (investment) {
-      const newEarnings = Math.max(0, newCurrentValue - investment.amount);
-      setAllInvestments((prev) =>
-        prev.map((inv) =>
-          inv.id === investmentId ? { ...inv, earned: newEarnings } : inv
-        )
-      );
-    }
-  };
-
   const cancelInvestment = (investmentId: string, reason: string) => {
     setAllInvestments((prev) =>
       prev.map((inv) =>
@@ -432,46 +479,46 @@ export function AdminProvider({ children }: AdminProviderProps) {
         )
       );
 
-      // Deduct funds from user balance in admin system
-      const currentUser = getUserById(withdrawal.userId);
-      if (currentUser) {
-        updateUserBalance(
-          withdrawal.userId,
-          currentUser.balance - withdrawal.amount
-        );
+      // Update user balance directly in admin system
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === withdrawal.userId
+            ? { ...user, balance: user.balance - withdrawal.amount }
+            : user
+        )
+      );
 
-        // Also update the user's individual balance in InvestmentContext storage
-        const userBalanceKey = `userBalance_${withdrawal.userId}`;
-        const currentUserBalance = parseFloat(
-          localStorage.getItem(userBalanceKey) || "0"
-        );
-        const newUserBalance = currentUserBalance - withdrawal.amount;
-        localStorage.setItem(userBalanceKey, newUserBalance.toString());
+      // Also update the user's individual balance in InvestmentContext storage
+      const userBalanceKey = `userBalance_${withdrawal.userId}`;
+      const currentUserBalance = parseFloat(
+        localStorage.getItem(userBalanceKey) || "0"
+      );
+      const newUserBalance = currentUserBalance - withdrawal.amount;
+      localStorage.setItem(userBalanceKey, newUserBalance.toString());
 
-        // Update the user's transaction status to Approved
-        const userTransactionsKey = `userTransactions_${withdrawal.userId}`;
-        const userTransactions = JSON.parse(
-          localStorage.getItem(userTransactionsKey) || "[]"
-        );
-        const updatedTransactions = userTransactions.map((tx: any) => {
-          if (
-            tx.type === "Withdrawal" &&
-            tx.amount === withdrawal.amount &&
-            tx.status === "Pending"
-          ) {
-            return {
-              ...tx,
-              status: "Approved",
-              description: `Withdrawal approved by admin`,
-            };
-          }
-          return tx;
-        });
-        localStorage.setItem(
-          userTransactionsKey,
-          JSON.stringify(updatedTransactions)
-        );
-      }
+      // Update the user's transaction status to Approved
+      const userTransactionsKey = `userTransactions_${withdrawal.userId}`;
+      const userTransactions = JSON.parse(
+        localStorage.getItem(userTransactionsKey) || "[]"
+      );
+      const updatedTransactions = userTransactions.map((tx: any) => {
+        if (
+          tx.type === "Withdrawal" &&
+          tx.amount === withdrawal.amount &&
+          tx.status === "Pending"
+        ) {
+          return {
+            ...tx,
+            status: "Approved",
+            description: `Withdrawal approved by admin`,
+          };
+        }
+        return tx;
+      });
+      localStorage.setItem(
+        userTransactionsKey,
+        JSON.stringify(updatedTransactions)
+      );
     }
   };
 
@@ -535,19 +582,40 @@ export function AdminProvider({ children }: AdminProviderProps) {
         )
       );
 
-      // Add funds to user balance in admin system
-      updateUserBalance(
-        deposit.userId,
-        (getUserById(deposit.userId)?.balance || 0) + deposit.amount
+      // Add funds to user balance directly in admin system
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === deposit.userId
+            ? { ...user, balance: user.balance + deposit.amount }
+            : user
+        )
       );
 
       // Also update the user's individual balance in InvestmentContext storage
       const userBalanceKey = `userBalance_${deposit.userId}`;
-      const currentUserBalance = parseFloat(
-        localStorage.getItem(userBalanceKey) || "0"
+      const userAssetBalancesKey = `userAssetBalances_${deposit.userId}`;
+
+      // Get current asset balances
+      const currentAssetBalances = JSON.parse(
+        localStorage.getItem(userAssetBalancesKey) ||
+          '{"BTC": 0, "ETH": 0, "SOL": 0}'
       );
-      const newUserBalance = currentUserBalance + deposit.amount;
-      localStorage.setItem(userBalanceKey, newUserBalance.toString());
+
+      // Update the specific asset balance
+      currentAssetBalances[deposit.asset] =
+        (currentAssetBalances[deposit.asset] || 0) + deposit.amount;
+
+      // Calculate new total balance from all assets
+      const newTotalBalance = (
+        Object.values(currentAssetBalances) as number[]
+      ).reduce((sum: number, bal: number) => sum + bal, 0);
+
+      // Save updated asset balances and total balance
+      localStorage.setItem(
+        userAssetBalancesKey,
+        JSON.stringify(currentAssetBalances)
+      );
+      localStorage.setItem(userBalanceKey, newTotalBalance.toString());
 
       // Update the user's existing pending transaction status to Approved
       const userTransactionsKey = `userTransactions_${deposit.userId}`;
@@ -612,51 +680,52 @@ export function AdminProvider({ children }: AdminProviderProps) {
     }
   };
 
-  // Admin Actions
-  const addFundsToUser = (userId: string, amount: number, reason: string) => {
-    const user = getUserById(userId);
-    if (user) {
-      updateUserBalance(userId, user.balance + amount);
+  // Admin Actions - Automated functions only
 
-      const newTransaction: Transaction = {
-        id: `txn_${Date.now()}`,
-        userId,
-        userEmail: user.email,
-        date: new Date().toISOString(),
-        type: "Deposit",
-        asset: "USD",
-        amount,
-        status: "Completed",
-        description: "Admin deposit",
-        adminNotes: reason,
-      };
-      setAllTransactions((prev) => [newTransaction, ...prev]);
+  // KYC Management Functions
+  const getPendingKYC = () =>
+    kycRequests.filter((req) => req.status === "pending");
+
+  const approveKYC = (requestId: string, adminNotes?: string) => {
+    const kycRequest = kycRequests.find((req) => req.id === requestId);
+    if (kycRequest) {
+      setKycRequests((prev) =>
+        prev.map((req) =>
+          req.id === requestId
+            ? { ...req, status: "approved" as const, adminNotes }
+            : req
+        )
+      );
+
+      // Update user verification status in admin system
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === kycRequest.userId ? { ...user, isVerified: true } : user
+        )
+      );
+
+      // Also update the user's verification status in auth system
+      const registeredUsers = JSON.parse(
+        localStorage.getItem("registeredUsers") || "[]"
+      );
+      const updatedUsers = registeredUsers.map((user: any) => {
+        if (user.id === kycRequest.userId) {
+          return { ...user, isVerified: true };
+        }
+        return user;
+      });
+      localStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
     }
   };
 
-  const deductFundsFromUser = (
-    userId: string,
-    amount: number,
-    reason: string
-  ) => {
-    const user = getUserById(userId);
-    if (user) {
-      updateUserBalance(userId, Math.max(0, user.balance - amount));
-
-      const newTransaction: Transaction = {
-        id: `txn_${Date.now()}`,
-        userId,
-        userEmail: user.email,
-        date: new Date().toISOString(),
-        type: "Withdrawal",
-        asset: "USD",
-        amount,
-        status: "Completed",
-        description: "Admin deduction",
-        adminNotes: reason,
-      };
-      setAllTransactions((prev) => [newTransaction, ...prev]);
-    }
+  const rejectKYC = (requestId: string, reason: string) => {
+    setKycRequests((prev) =>
+      prev.map((req) =>
+        req.id === requestId
+          ? { ...req, status: "rejected" as const, adminNotes: reason }
+          : req
+      )
+    );
   };
 
   const createManualInvestment = (
@@ -718,21 +787,18 @@ export function AdminProvider({ children }: AdminProviderProps) {
     totalPlatformValue: getTotalPlatformValue(),
     pendingWithdrawals: getPendingWithdrawals().length,
     pendingDeposits: getPendingDeposits().length,
+    pendingKyc: getPendingKYC().length,
   });
 
   const value = {
     users,
     getAllUsers,
     getUserById,
-    updateUserBalance,
     suspendUser,
     activateUser,
     deleteUser,
     allInvestments,
     getUserInvestments,
-    updateInvestmentAmount,
-    updateInvestmentEarnings,
-    updateInvestmentCurrentValue,
     cancelInvestment,
     completeInvestment,
     allTransactions,
@@ -747,8 +813,10 @@ export function AdminProvider({ children }: AdminProviderProps) {
     getPendingDeposits,
     verifyDeposit,
     rejectDeposit,
-    addFundsToUser,
-    deductFundsFromUser,
+    kycRequests,
+    getPendingKYC,
+    approveKYC,
+    rejectKYC,
     createManualInvestment,
     getTotalPlatformValue,
     getTotalActiveInvestments,

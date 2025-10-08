@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { SiBitcoin, SiEthereum } from "react-icons/si";
+import { TbCurrencySolana } from "react-icons/tb";
 import {
   DollarSign,
   Copy,
@@ -33,19 +34,19 @@ const DEPOSIT_ASSETS = [
     id: "BTC",
     name: "Bitcoin",
     icon: SiBitcoin,
-    walletAddress: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+    walletAddress: "3H2CW2w8eiCnytfF57Tyk4sxxZwbr9aQCx",
   },
   {
     id: "ETH",
     name: "Ethereum",
     icon: SiEthereum,
-    walletAddress: "0x742d35Cc6734C0532925a3b8D0C1dC3F2E8a2C2a",
+    walletAddress: "0x275CDF33a56400f3164AA34831027f7b5A42ABb4",
   },
   {
-    id: "USDC",
-    name: "USD Coin",
-    icon: DollarSign,
-    walletAddress: "0x742d35Cc6734C0532925a3b8D0C1dC3F2E8a2C2a",
+    id: "SOL",
+    name: "Solana",
+    icon: TbCurrencySolana,
+    walletAddress: "8XoKp527ERexxMC9QxL4soXHRvwKdCj2wmNK3iBdNxVE",
   },
 ];
 
@@ -56,7 +57,7 @@ interface DepositModalProps {
 
 export function DepositModal({ open, onOpenChange }: DepositModalProps) {
   const [step, setStep] = useState(1);
-  const [asset, setAsset] = useState("USDC");
+  const [asset, setAsset] = useState("BTC");
   const [amount, setAmount] = useState("");
   const [transactionHash, setTransactionHash] = useState("");
   const [walletCopied, setWalletCopied] = useState(false);
