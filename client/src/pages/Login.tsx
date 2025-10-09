@@ -10,9 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -30,13 +29,7 @@ export default function Login() {
           title: "Login successful!",
           description: "Welcome back to CryptoInvest",
         });
-
-        // Check if admin user and redirect accordingly
-        if (email === "admin@reciperover.com") {
-          setLocation("/admin-dashboard");
-        } else {
-          setLocation("/dashboard");
-        }
+        // Navigation is handled in AuthContext
       } else {
         toast({
           title: "Login failed",

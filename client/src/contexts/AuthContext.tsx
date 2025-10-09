@@ -11,14 +11,17 @@ import { apiClient } from "../lib/apiClient";
 interface User {
   id: string;
   email: string;
-  isAdmin: boolean;
+  role: string; // "user" or "admin" from backend
+  kycStatus: string;
+  isVerified: boolean;
+  isAdmin: boolean; // computed from role
   balance: {
     USDT: number;
     BTC: number;
     ETH: number;
     BNB: number;
   };
-  hasCompletedKYC: boolean;
+  hasCompletedKYC: boolean; // computed from kycStatus
 }
 
 interface AuthContextType {
@@ -93,7 +96,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setLoading(true);
       const response = await apiClient.login(email, password);
-      setUser(response.user);
+
+      // Transform backend user data to match frontend interface
+      const userData = {
+        id: response.user.id,
+        email: response.user.email,
+        role: response.user.role,
+        kycStatus: response.user.kycStatus,
+        isVerified: response.user.isVerified,
+        isAdmin: response.user.role === "admin",
+        hasCompletedKYC: response.user.kycStatus === "approved",
+        balance: {
+          USDT: 0,
+          BTC: 0,
+          ETH: 0,
+          BNB: 0,
+        },
+      };
+
+      setUser(userData);
+
+      // Navigate based on user role
+      setTimeout(() => {
+        if (userData.isAdmin) {
+          setLocation("/admin-dashboard");
+        } else {
+          setLocation("/dashboard");
+        }
+      }, 100);
+
       return true;
     } catch (error: any) {
       console.error("Login failed:", error);
