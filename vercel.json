@@ -1,13 +1,13 @@
 {
   "version": 2,
-  "name": "reciperover-backend",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
   "builds": [
     {
       "src": "server/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["server/**", "shared/**", "package.json"]
-      }
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -18,6 +18,10 @@
     {
       "src": "/health",
       "dest": "/server/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "env": {
