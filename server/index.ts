@@ -79,40 +79,14 @@ app.use((req, res, next) => {
 
       httpServer.listen(port, () => {
         log(`Server running on port ${port}`);
-
-        // Get local IP address for mobile access
-        import("os").then(({ networkInterfaces }) => {
-          const nets = networkInterfaces();
-          let localIP = "localhost";
-
-          for (const name of Object.keys(nets)) {
-            for (const net of nets[name]) {
-              const familyV4Value = typeof net.family === "string" ? "IPv4" : 4;
-              if (
-                net.family === familyV4Value &&
-                !net.internal &&
-                net.address !== "127.0.0.1"
-              ) {
-                localIP = net.address;
-                break;
-              }
-            }
-          }
-
-          console.log("\n🌐 Network URLs:");
-          console.log(`  Local:   http://localhost:${port}`);
-          console.log(`  Mobile:  http://${localIP}:${port}`);
-          console.log("\n📱 To view on your phone:");
-          console.log(`  1. Make sure your phone is on the same WiFi network`);
-          console.log(
-            `  2. Open http://${localIP}:${port} in your phone's browser\n`
-          );
-        });
+        console.log(`🌐 Server: http://localhost:${port}`);
       });
     }
   } catch (error) {
     console.error("❌ Failed to start server:", error);
-    process.exit(1);
+    if (process.env.NODE_ENV !== "production") {
+      process.exit(1);
+    }
   }
 })();
 
