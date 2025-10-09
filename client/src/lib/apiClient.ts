@@ -1,7 +1,6 @@
 // API utility for backend communication
 const API_BASE_URL = import.meta.env.PROD
-  ? import.meta.env.VITE_API_BASE_URL ||
-    "https://reciperover-backend.vercel.app/api" // Replace with your actual backend Vercel domain
+  ? "https://crypto-invest-ip9u.vercel.app/api" // Your Vercel app URL + /api
   : "http://localhost:5000/api";
 
 class ApiClient {

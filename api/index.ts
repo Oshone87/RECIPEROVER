@@ -68,8 +68,11 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Registration endpoint
-    if (req.url === "/api/auth/register" && req.method === "POST") {
+    // Registration endpoint - support both /auth/register and /api/auth/register
+    if (
+      (req.url === "/auth/register" || req.url === "/api/auth/register") &&
+      req.method === "POST"
+    ) {
       const { email, password } = req.body;
 
       if (!email || !password) {
@@ -81,11 +84,9 @@ export default async function handler(req: any, res: any) {
       // Check if user exists
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        return res
-          .status(400)
-          .json({
-            message: "Email already exists. Please use a different email.",
-          });
+        return res.status(400).json({
+          message: "Email already exists. Please use a different email.",
+        });
       }
 
       // Hash password
