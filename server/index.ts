@@ -51,65 +51,69 @@ app.use((req, res, next) => {
   next();
 });
 
+// Database connection
 (async () => {
-  // Connect to database
-  await connectDatabase();
+  try {
+    console.log("🔗 Connecting to database...");
+    await connectDatabase();
+    console.log("✅ Database connected successfully");
 
-  const server = await registerRoutes(app);
+    // Register API routes
+    registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    // Health check endpoint
+    app.get("/health", (req: Request, res: Response) => {
+      res.json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        mongodb: "connected",
+      });
+    });
 
-    res.status(status).json({ message });
-    throw err;
-  });
+    // Only start the server if we're not in a serverless environment
+    if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+      const { createServer } = await import("http");
+      const httpServer = createServer(app);
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+      const port = parseInt(process.env.PORT || "5000", 10);
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  server.listen(port, "0.0.0.0", () => {
-    log(`serving on port ${port}`);
+      httpServer.listen(port, () => {
+        log(`Server running on port ${port}`);
 
-    // Get local IP address for mobile access
-    import("os").then((os) => {
-      const networkInterfaces = os.networkInterfaces();
-      let localIP = "localhost";
+        // Get local IP address for mobile access
+        const { networkInterfaces } = require("os");
+        const nets = networkInterfaces();
+        let localIP = "localhost";
 
-      for (const interfaceName in networkInterfaces) {
-        const interfaceInfo = networkInterfaces[interfaceName];
-        if (interfaceInfo) {
-          for (const networkInterface of interfaceInfo) {
+        for (const name of Object.keys(nets)) {
+          for (const net of nets[name]) {
+            const familyV4Value = typeof net.family === "string" ? "IPv4" : 4;
             if (
-              networkInterface.family === "IPv4" &&
-              !networkInterface.internal
+              net.family === familyV4Value &&
+              !net.internal &&
+              net.address !== "127.0.0.1"
             ) {
-              localIP = networkInterface.address;
+              localIP = net.address;
               break;
             }
           }
         }
-      }
 
-      console.log("\n🌐 Network URLs:");
-      console.log(`  Local:   http://localhost:${port}`);
-      console.log(`  Mobile:  http://${localIP}:${port}`);
-      console.log("\n📱 To view on your phone:");
-      console.log(`  1. Make sure your phone is on the same WiFi network`);
-      console.log(
-        `  2. Open http://${localIP}:${port} in your phone's browser\n`
-      );
-    });
-  });
+        console.log("\n🌐 Network URLs:");
+        console.log(`  Local:   http://localhost:${port}`);
+        console.log(`  Mobile:  http://${localIP}:${port}`);
+        console.log("\n📱 To view on your phone:");
+        console.log(`  1. Make sure your phone is on the same WiFi network`);
+        console.log(
+          `  2. Open http://${localIP}:${port} in your phone's browser\n`
+        );
+      });
+    }
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    process.exit(1);
+  }
 })();
+
+// Export the app for Vercel
+export { app };
