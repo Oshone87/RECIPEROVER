@@ -6,19 +6,30 @@ import {
   ReactNode,
 } from "react";
 import { useLocation } from "wouter";
+import { apiClient } from "../lib/apiClient";
 
 interface User {
   id: string;
   email: string;
-  isVerified: boolean;
+  isAdmin: boolean;
+  balance: {
+    USDT: number;
+    BTC: number;
+    ETH: number;
+    BNB: number;
+  };
+  hasCompletedKYC: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
+  loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  updateUser: (updates: Partial<User>) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,110 +48,82 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [, setLocation] = useLocation();
 
-  // Load user from localStorage on mount
+  // Check if user is authenticated on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-
-    // Initialize with admin user if not exists
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
-    const adminExists = registeredUsers.find(
-      (u: any) => u.email === "admin@reciperover.com"
-    );
-
-    if (!adminExists) {
-      const adminUser = {
-        id: "admin_1",
-        email: "admin@reciperover.com",
-        password: "admin123",
-        isVerified: true,
-      };
-      registeredUsers.push(adminUser);
-      localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      refreshUser();
+    } else {
+      setLoading(false);
     }
   }, []);
 
-  const signup = async (email: string, password: string): Promise<boolean> => {
-    // Check if user already exists
-    const existingUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
-    if (existingUsers.find((u: any) => u.email === email)) {
-      return false; // User already exists
+  const refreshUser = async () => {
+    try {
+      const userData = await apiClient.getCurrentUser();
+      setUser(userData.user);
+    } catch (error) {
+      console.error("Failed to refresh user:", error);
+      // If token is invalid, clear it
+      localStorage.removeItem("authToken");
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Add to registered users
-    const userId = `user_${Date.now()}`;
-    const newUser = { id: userId, email, password, isVerified: false };
-    existingUsers.push(newUser);
-    localStorage.setItem("registeredUsers", JSON.stringify(existingUsers));
-
-    // Set current user
-    const userData = { id: userId, email, isVerified: false };
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-
-    return true;
+  const signup = async (email: string, password: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      const response = await apiClient.register(email, password);
+      setUser(response.user);
+      return true;
+    } catch (error: any) {
+      console.error("Signup failed:", error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
-    const foundUser = registeredUsers.find(
-      (u: any) => u.email === email && u.password === password
-    );
-
-    if (foundUser) {
-      // Check if user was deleted by admin
-      const adminUsers = JSON.parse(localStorage.getItem("adminUsers") || "[]");
-      const adminUserExists = adminUsers.find(
-        (u: any) => u.id === foundUser.id
-      );
-
-      // If user doesn't exist in admin system and it's not the admin user,
-      // they might have been deleted
-      if (!adminUserExists && email !== "admin@reciperover.com") {
-        // User was deleted by admin, remove from registered users
-        const updatedUsers = registeredUsers.filter(
-          (u: any) => u.id !== foundUser.id
-        );
-        localStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
-        return false;
-      }
-
-      const userData = {
-        id: foundUser.id || `user_${Date.now()}`,
-        email: foundUser.email,
-        isVerified: foundUser.isVerified,
-      };
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
+    try {
+      setLoading(true);
+      const response = await apiClient.login(email, password);
+      setUser(response.user);
       return true;
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      return false;
+    } finally {
+      setLoading(false);
     }
-
-    return false;
   };
 
   const logout = () => {
+    apiClient.logout();
     setUser(null);
-    localStorage.removeItem("user");
     // Redirect to home page after logout
     setLocation("/");
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    if (!user) return;
+    setUser({ ...user, ...updates });
+  };
+
   const value = {
     user,
+    loading,
     login,
     signup,
     logout,
     isAuthenticated: !!user,
+    updateUser,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

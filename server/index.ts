@@ -1,8 +1,23 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { connectDatabase } from "./config/database";
 
 const app = express();
+
+// Security middleware
+app.use(helmet());
+app.use(cors());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+});
+app.use("/api", limiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -37,6 +52,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Connect to database
+  await connectDatabase();
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

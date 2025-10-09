@@ -134,7 +134,7 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     // Check if user has sufficient balance in the specific asset
     if (amount > assetBalance) {
       toast({
@@ -146,7 +146,7 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
     }
 
     // Create the investment directly
-    const success = createInvestment({
+    const success = await createInvestment({
       tier: selectedTier.label,
       asset,
       amount,

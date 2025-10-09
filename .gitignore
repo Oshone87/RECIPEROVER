@@ -27,3 +27,8 @@ tmp/
 *.tmp
 *.temp
 *.log
+
+# Environment variable files
+.env
+.env.local
+.env.production
