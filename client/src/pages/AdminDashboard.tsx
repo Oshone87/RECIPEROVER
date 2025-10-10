@@ -463,11 +463,21 @@ export default function AdminDashboard() {
         {/* Tabs for different sections */}
         <Tabs defaultValue="kyc" className="w-full">
           <TabsList className="flex w-full gap-2 overflow-x-auto whitespace-nowrap">
-            <TabsTrigger className="text-xs sm:text-sm" value="users">Users</TabsTrigger>
-            <TabsTrigger className="text-xs sm:text-sm" value="kyc">KYC Requests</TabsTrigger>
-            <TabsTrigger className="text-xs sm:text-sm" value="deposits">Deposits</TabsTrigger>
-            <TabsTrigger className="text-xs sm:text-sm" value="withdrawals">Withdrawals</TabsTrigger>
-            <TabsTrigger className="text-xs sm:text-sm" value="investments">Investments</TabsTrigger>
+            <TabsTrigger className="text-xs sm:text-sm" value="users">
+              Users
+            </TabsTrigger>
+            <TabsTrigger className="text-xs sm:text-sm" value="kyc">
+              KYC Requests
+            </TabsTrigger>
+            <TabsTrigger className="text-xs sm:text-sm" value="deposits">
+              Deposits
+            </TabsTrigger>
+            <TabsTrigger className="text-xs sm:text-sm" value="withdrawals">
+              Withdrawals
+            </TabsTrigger>
+            <TabsTrigger className="text-xs sm:text-sm" value="investments">
+              Investments
+            </TabsTrigger>
           </TabsList>
 
           {/* Users Tab */}
@@ -513,18 +523,33 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Email</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Verified</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Status</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">KYC Status</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Joined</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Actions</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Email
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Verified
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Status
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          KYC Status
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Joined
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {pagedUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                          <td
+                            colSpan={6}
+                            className="py-8 text-center text-muted-foreground"
+                          >
                             No users found
                           </td>
                         </tr>
@@ -537,17 +562,28 @@ export default function AdminDashboard() {
                               new Date(a.createdAt).getTime()
                           )
                           .map((u) => (
-                            <tr key={u._id} className="border-b hover:bg-muted/50">
+                            <tr
+                              key={u._id}
+                              className="border-b hover:bg-muted/50"
+                            >
                               <td className="py-3 px-4">
                                 <span className="font-medium">{u.email}</span>
                               </td>
                               <td className="py-3 px-4">
-                                <Badge variant={u.isVerified ? "default" : "secondary"}>
+                                <Badge
+                                  variant={
+                                    u.isVerified ? "default" : "secondary"
+                                  }
+                                >
                                   {u.isVerified ? "Yes" : "No"}
                                 </Badge>
                               </td>
                               <td className="py-3 px-4">
-                                <Badge variant={u.isDisabled ? "destructive" : "secondary"}>
+                                <Badge
+                                  variant={
+                                    u.isDisabled ? "destructive" : "secondary"
+                                  }
+                                >
                                   {u.isDisabled ? "Disabled" : "Active"}
                                 </Badge>
                               </td>
@@ -581,14 +617,26 @@ export default function AdminDashboard() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant={u.isDisabled ? "default" : "destructive"}
+                                    variant={
+                                      u.isDisabled ? "default" : "destructive"
+                                    }
                                     onClick={async () => {
                                       try {
-                                        await apiClient.updateUserDisabled(u._id, !u.isDisabled);
-                                        toast({ title: u.isDisabled ? "User enabled" : "User disabled" });
+                                        await apiClient.updateUserDisabled(
+                                          u._id,
+                                          !u.isDisabled
+                                        );
+                                        toast({
+                                          title: u.isDisabled
+                                            ? "User enabled"
+                                            : "User disabled",
+                                        });
                                         fetchAdminData();
                                       } catch (e) {
-                                        toast({ title: "Action failed", variant: "destructive" });
+                                        toast({
+                                          title: "Action failed",
+                                          variant: "destructive",
+                                        });
                                       }
                                     }}
                                   >
@@ -598,13 +646,20 @@ export default function AdminDashboard() {
                                     size="sm"
                                     variant="outline"
                                     onClick={async () => {
-                                      if (confirm(`Delete user ${u.email}? This cannot be undone.`)) {
+                                      if (
+                                        confirm(
+                                          `Delete user ${u.email}? This cannot be undone.`
+                                        )
+                                      ) {
                                         try {
                                           await apiClient.deleteUser(u._id);
                                           toast({ title: "User deleted" });
                                           fetchAdminData();
                                         } catch (e) {
-                                          toast({ title: "Delete failed", variant: "destructive" });
+                                          toast({
+                                            title: "Delete failed",
+                                            variant: "destructive",
+                                          });
                                         }
                                       }
                                     }}
@@ -657,13 +712,27 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">User</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Tier</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Asset</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Amount</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Period</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Status</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Date</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          User
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Tier
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Asset
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Amount
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Period
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Status
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Date
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -728,11 +797,21 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">User</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Name</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Status</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Date</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Actions</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          User
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Name
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Status
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Date
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -823,11 +902,21 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">User</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Amount</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Asset</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Status</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Actions</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          User
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Amount
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Asset
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Status
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -916,12 +1005,24 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">User</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Amount</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Asset</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Wallet</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Status</th>
-                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Actions</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          User
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Amount
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Asset
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Wallet
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Status
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
