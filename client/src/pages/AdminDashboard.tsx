@@ -462,12 +462,12 @@ export default function AdminDashboard() {
 
         {/* Tabs for different sections */}
         <Tabs defaultValue="kyc" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="kyc">KYC Requests</TabsTrigger>
-            <TabsTrigger value="deposits">Deposits</TabsTrigger>
-            <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
-            <TabsTrigger value="investments">Investments</TabsTrigger>
+          <TabsList className="flex w-full gap-2 overflow-x-auto whitespace-nowrap">
+            <TabsTrigger className="text-xs sm:text-sm" value="users">Users</TabsTrigger>
+            <TabsTrigger className="text-xs sm:text-sm" value="kyc">KYC Requests</TabsTrigger>
+            <TabsTrigger className="text-xs sm:text-sm" value="deposits">Deposits</TabsTrigger>
+            <TabsTrigger className="text-xs sm:text-sm" value="withdrawals">Withdrawals</TabsTrigger>
+            <TabsTrigger className="text-xs sm:text-sm" value="investments">Investments</TabsTrigger>
           </TabsList>
 
           {/* Users Tab */}
@@ -476,7 +476,7 @@ export default function AdminDashboard() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4 flex-col sm:flex-row gap-3">
                   <h2 className="text-xl font-bold">Users</h2>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     <input
                       type="text"
                       placeholder="Search by email..."
@@ -513,12 +513,12 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4">Email</th>
-                        <th className="text-left py-3 px-4">Verified</th>
-                        <th className="text-left py-3 px-4">Status</th>
-                        <th className="text-left py-3 px-4">KYC Status</th>
-                        <th className="text-left py-3 px-4">Joined</th>
-                        <th className="text-left py-3 px-4">Actions</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Email</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Verified</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Status</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">KYC Status</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Joined</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -526,10 +526,10 @@ export default function AdminDashboard() {
                         <tr>
                           <td
                             colSpan={6}
-                            className="py-8 text-center text-muted-foreground"
+                              <td className="py-3 px-4">
                           >
                             No users found
-                          </td>
+                              <td className="py-3 px-4">
                         </tr>
                       ) : (
                         pagedUsers
@@ -538,12 +538,12 @@ export default function AdminDashboard() {
                             (a, b) =>
                               new Date(b.createdAt).getTime() -
                               new Date(a.createdAt).getTime()
-                          )
+                              <td className="py-3 px-4">
                           .map((u) => (
                             <tr
                               key={u._id}
                               className="border-b hover:bg-muted/50"
-                            >
+                              <td className="py-3 px-4">
                               <td className="py-3 px-4">
                                 <span className="font-medium">{u.email}</span>
                               </td>
@@ -559,8 +559,8 @@ export default function AdminDashboard() {
                               <td className="py-3 px-4">
                                 <Badge
                                   variant={
-                                    u.isDisabled ? "destructive" : "secondary"
-                                  }
+                              <td className="py-3 px-4">
+                                <div className="flex flex-wrap gap-2">
                                 >
                                   {u.isDisabled ? "Disabled" : "Active"}
                                 </Badge>
@@ -690,13 +690,13 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4">User</th>
-                        <th className="text-left py-3 px-4">Tier</th>
-                        <th className="text-left py-3 px-4">Asset</th>
-                        <th className="text-left py-3 px-4">Amount</th>
-                        <th className="text-left py-3 px-4">Period</th>
-                        <th className="text-left py-3 px-4">Status</th>
-                        <th className="text-left py-3 px-4">Date</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">User</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Tier</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Asset</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Amount</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Period</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Status</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Date</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -761,11 +761,11 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4">User</th>
-                        <th className="text-left py-3 px-4">Name</th>
-                        <th className="text-left py-3 px-4">Status</th>
-                        <th className="text-left py-3 px-4">Date</th>
-                        <th className="text-left py-3 px-4">Actions</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">User</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Name</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Status</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Date</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -816,7 +816,7 @@ export default function AdminDashboard() {
                             </td>
                             <td className="py-3 px-4">
                               {request.status === "pending" && (
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                   <Button
                                     size="sm"
                                     onClick={() =>
@@ -856,11 +856,11 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4">User</th>
-                        <th className="text-left py-3 px-4">Amount</th>
-                        <th className="text-left py-3 px-4">Asset</th>
-                        <th className="text-left py-3 px-4">Status</th>
-                        <th className="text-left py-3 px-4">Actions</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">User</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Amount</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Asset</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Status</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -907,7 +907,7 @@ export default function AdminDashboard() {
                             </td>
                             <td className="py-3 px-4">
                               {request.status === "pending" && (
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                   <Button
                                     size="sm"
                                     onClick={() =>
@@ -949,12 +949,12 @@ export default function AdminDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4">User</th>
-                        <th className="text-left py-3 px-4">Amount</th>
-                        <th className="text-left py-3 px-4">Asset</th>
-                        <th className="text-left py-3 px-4">Wallet</th>
-                        <th className="text-left py-3 px-4">Status</th>
-                        <th className="text-left py-3 px-4">Actions</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">User</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Amount</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Asset</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Wallet</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Status</th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1007,7 +1007,7 @@ export default function AdminDashboard() {
                               </Badge>
                             </td>
                             <td className="py-3 px-4">
-                              <div className="flex gap-2">
+                              <div className="flex flex-wrap gap-2">
                                 {request.status === "pending" && (
                                   <>
                                     <Button
