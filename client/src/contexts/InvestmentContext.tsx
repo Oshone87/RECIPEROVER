@@ -403,6 +403,10 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
         description: `Deposit request for ${asset}`,
       };
       setTransactions((prev) => [newTransaction, ...prev]);
+      // Refresh balances/transactions so the UI reflects server state after admin actions
+      setTimeout(() => {
+        refreshData();
+      }, 500);
     } catch (error) {
       console.error("Failed to create deposit request:", error);
       throw error;
@@ -439,6 +443,10 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
         description: `Withdrawal request to ${asset} wallet`,
       };
       setTransactions((prev) => [newTransaction, ...prev]);
+      // Refresh to show pending withdrawal immediately and eventual balance change after admin completes
+      setTimeout(() => {
+        refreshData();
+      }, 500);
     } catch (error) {
       console.error("Failed to create withdrawal request:", error);
       throw error;

@@ -54,7 +54,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const [, setLocation] = useLocation();
 
-  // Check if user is authenticated on mount
+  // Initialize auth state on mount without logging out if token exists
   useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (token) {
@@ -81,9 +81,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
     } catch (error) {
       console.error("Failed to refresh user:", error);
-      // If token is invalid, clear it
-      localStorage.removeItem("authToken");
-      setUser(null);
+      // Do not clear token on transient errors; leave user as-is to preserve session on refresh
     } finally {
       setLoading(false);
     }
@@ -157,7 +155,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     signup,
     logout,
-    isAuthenticated: !!user,
+    isAuthenticated: !!localStorage.getItem("authToken"),
     updateUser,
     refreshUser,
   };

@@ -1158,8 +1158,8 @@ export default async function handler(req: any, res: any) {
           },
           { new: true }
         );
-        // Optionally deduct user's balance when completed
-        if (updated && status === "completed") {
+        // Deduct user's balance when approved or completed
+        if (updated && (status === "approved" || status === "completed")) {
           const bal = await AssetBalance.findOne({ userId: updated.userId });
           if (bal) {
             const fieldMap: Record<string, keyof typeof bal> = {
