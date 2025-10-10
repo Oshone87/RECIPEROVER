@@ -70,7 +70,7 @@ interface WithdrawalRequest {
 }
 
 export default function AdminDashboard() {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -93,6 +93,9 @@ export default function AdminDashboard() {
 
   // Check admin access and fetch data
   useEffect(() => {
+    // Don't make API calls if still loading authentication state
+    if (authLoading) return;
+
     if (!isAuthenticated) {
       setLocation("/login");
       return;
@@ -109,8 +112,11 @@ export default function AdminDashboard() {
       return;
     }
 
-    fetchAdminData();
-  }, [isAuthenticated, user, setLocation, toast]);
+    // Only fetch data if user is authenticated and is admin
+    if (isAuthenticated && user?.email === "davidanyia72@gmail.com") {
+      fetchAdminData();
+    }
+  }, [isAuthenticated, user, authLoading, setLocation, toast]);
 
   const fetchAdminData = async () => {
     try {
