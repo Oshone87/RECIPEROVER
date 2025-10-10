@@ -1,5 +1,4 @@
 import express, { type Request, Response, NextFunction } from "express";
-import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
@@ -8,73 +7,38 @@ import { connectDatabase } from "./config/database";
 
 const app = express();
 
-// CORS handling MUST come before other middleware
+// CORS handling MUST come first - be completely permissive for now
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
   // Log the origin for debugging
   console.log(`🌐 Request from origin: ${origin}`);
 
-  // Allow specific origins or any vercel.app subdomain
-  const allowedOrigins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-    "http://localhost:5176",
-    "http://localhost:5177",
-    "http://localhost:5178",
-    "http://localhost:5179",
-    "http://localhost:5180",
-    "http://localhost:5181",
-    "http://localhost:5182",
-    "http://localhost:5183",
-    "http://localhost:5184",
-    "http://localhost:5185",
-    "http://localhost:5186",
-    "http://localhost:5187",
-    "https://crypto-invest-ip9u.vercel.app",
-    "https://reciperover.vercel.app",
-    "https://recipe-rover.vercel.app",
-  ];
+  // Be completely permissive with CORS for debugging
+  res.header("Access-Control-Allow-Origin", origin || "*");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD");
+  res.header("Access-Control-Allow-Headers", "*");
+  res.header("Access-Control-Expose-Headers", "*");
+  
+  console.log(`✅ CORS headers set for origin: ${origin}`);
 
-  // Always set CORS headers for allowed origins
-  if (
-    !origin ||
-    allowedOrigins.includes(origin) ||
-    (origin && origin.includes(".vercel.app"))
-  ) {
-    res.header("Access-Control-Allow-Origin", origin || "*");
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS"
-    );
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    );
-    console.log(`✅ CORS allowed for origin: ${origin}`);
-  } else {
-    console.log(`❌ CORS blocked for origin: ${origin}`);
-  }
-
-  // Handle preflight requests
+  // Handle preflight requests immediately
   if (req.method === "OPTIONS") {
-    console.log(`🔧 Handling OPTIONS preflight request`);
-    res.sendStatus(200);
+    console.log(`🔧 Handling OPTIONS preflight request for ${req.path}`);
+    res.status(200).end();
     return;
   }
 
   next();
 });
 
-// Security middleware (after CORS)
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
-);
+// Security middleware (disabled for CORS debugging)
+// app.use(
+//   helmet({
+//     crossOriginResourcePolicy: { policy: "cross-origin" },
+//   })
+// );
 
 // Rate limiting
 const limiter = rateLimit({
@@ -131,6 +95,27 @@ app.use((req, res, next) => {
         status: "ok",
         timestamp: new Date().toISOString(),
         mongodb: "connected",
+      });
+    });
+
+    // CORS test endpoint
+    app.get("/api/cors-test", (req: Request, res: Response) => {
+      res.json({
+        status: "CORS working",
+        origin: req.headers.origin,
+        method: req.method,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // Test POST endpoint for CORS
+    app.post("/api/cors-test", (req: Request, res: Response) => {
+      res.json({
+        status: "CORS POST working",
+        origin: req.headers.origin,
+        method: req.method,
+        body: req.body,
+        timestamp: new Date().toISOString(),
       });
     });
 
