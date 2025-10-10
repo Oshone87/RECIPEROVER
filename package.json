@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite --host",
     "dev:backend": "NODE_ENV=development tsx server/index.ts",
-    "build": "tsc && vite build",
-    "build:client": "tsc && vite build",
+    "build": "tsc -p tsconfig.client.json && vite build",
+    "build:client": "tsc -p tsconfig.client.json && vite build",
     "preview": "vite preview",
     "deploy:backend": "vercel --prod",
     "deploy:frontend": "vercel --prod --config vercel-frontend.json"
