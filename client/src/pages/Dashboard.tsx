@@ -174,25 +174,6 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-              {/* KYC Status Badge */}
-              <div className="flex items-center justify-center sm:justify-start">
-                <Badge
-                  variant={
-                    kycInfo.isVerified
-                      ? "default"
-                      : kycInfo.kycStatus === "pending"
-                      ? "secondary"
-                      : "destructive"
-                  }
-                  className="uppercase"
-                >
-                  {kycInfo.isVerified
-                    ? "Verified"
-                    : kycInfo.kycStatus === "pending"
-                    ? "KYC Pending"
-                    : "Not Verified"}
-                </Badge>
-              </div>
               <Button
                 size="lg"
                 variant="default"
