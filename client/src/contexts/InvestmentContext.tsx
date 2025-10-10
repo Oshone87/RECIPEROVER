@@ -256,6 +256,8 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
               status:
                 (t.status || "").toLowerCase() === "completed"
                   ? "Completed"
+                  : (t.status || "").toLowerCase() === "approved"
+                  ? "Approved"
                   : (t.status || "").toLowerCase() === "pending"
                   ? "Pending"
                   : "Failed",
@@ -304,6 +306,11 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem("authToken");
     if (isAuthenticated && token) {
       refreshData();
+      // Lightweight polling while authenticated to reflect admin updates promptly
+      const id = setInterval(() => {
+        refreshData();
+      }, 15000);
+      return () => clearInterval(id);
     } else {
       // Clear data when user logs out
       setBalance(0);

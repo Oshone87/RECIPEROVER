@@ -325,11 +325,12 @@ export default function Dashboard() {
                             variant={
                               tx.status === "completed"
                                 ? "default"
-                                : tx.status === "pending"
+                                : tx.status === "pending" ||
+                                  tx.status === "approved"
                                 ? "secondary"
                                 : "destructive"
                             }
-                            className="text-xs"
+                            className="text-xs capitalize"
                           >
                             {tx.status}
                           </Badge>

@@ -591,7 +591,9 @@ export default async function handler(req: any, res: any) {
           status:
             w.status === "completed"
               ? "completed"
-              : w.status === "pending" || w.status === "approved"
+              : w.status === "approved"
+              ? "approved"
+              : w.status === "pending"
               ? "pending"
               : "rejected",
         }));
@@ -1017,6 +1019,32 @@ export default async function handler(req: any, res: any) {
         if (!amount || !asset) {
           return res.status(400).json({ message: "Missing fields" });
         }
+
+        // Enforce asset-specific balance availability before allowing request
+        const bal = await AssetBalance.findOne({ userId: decoded.userId });
+        if (!bal) {
+          return res.status(400).json({ message: "No balances found" });
+        }
+        const fieldMap: Record<string, keyof typeof bal> = {
+          BTC: "bitcoin" as any,
+          ETH: "ethereum" as any,
+          SOL: "solana" as any,
+          bitcoin: "bitcoin" as any,
+          ethereum: "ethereum" as any,
+          solana: "solana" as any,
+        };
+        const field = (fieldMap as any)[asset] || null;
+        if (!field) {
+          return res.status(400).json({ message: "Invalid asset" });
+        }
+        // @ts-ignore dynamic index
+        const available = Number(bal[field] || 0);
+        if (available < Number(amount)) {
+          return res
+            .status(400)
+            .json({ message: `Insufficient ${asset} balance` });
+        }
+
         const reqDoc = new WithdrawalRequest({
           userId: decoded.userId,
           amount,

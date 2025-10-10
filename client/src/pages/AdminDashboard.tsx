@@ -458,6 +458,23 @@ export default function AdminDashboard() {
               <Upload className="h-8 w-8 sm:h-12 sm:w-12 text-purple-600" />
             </div>
           </Card>
+
+          <Card className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Pending Withdrawals
+                </p>
+                <p className="text-2xl sm:text-3xl font-bold">
+                  {stats?.pendingWithdrawals || 0}
+                </p>
+                <p className="text-xs sm:text-sm text-red-600">
+                  Requires approval
+                </p>
+              </div>
+              <Download className="h-8 w-8 sm:h-12 sm:w-12 text-red-600" />
+            </div>
+          </Card>
         </div>
 
         {/* Tabs for different sections */}

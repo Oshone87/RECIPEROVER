@@ -21,7 +21,7 @@ import { TbCurrencySolana } from "react-icons/tb";
 import { DollarSign, AlertTriangle, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiClient } from "@/lib/apiClient";
+import { useInvestment } from "@/contexts/InvestmentContext";
 
 const WITHDRAWAL_ASSETS = [
   { id: "BTC", name: "Bitcoin", icon: SiBitcoin, fee: "0.0005 BTC" },
@@ -48,10 +48,12 @@ export function WithdrawalModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { getAssetBalance, createWithdrawalRequest } = useInvestment();
 
   const selectedAsset = WITHDRAWAL_ASSETS.find((a) => a.id === asset);
   const numAmount = parseFloat(amount) || 0;
-  const maxWithdrawal = availableBalance;
+  const assetBalance = getAssetBalance(asset);
+  const maxWithdrawal = assetBalance;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,10 +76,19 @@ export function WithdrawalModal({
       return;
     }
 
-    if (numAmount > maxWithdrawal) {
+    if (assetBalance <= 0) {
+      toast({
+        title: `${asset} balance is empty`,
+        description: `You currently have $0 available in ${asset}. Please deposit funds or choose another asset.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (numAmount > assetBalance) {
       toast({
         title: "Insufficient balance",
-        description: `Maximum withdrawal amount is $${maxWithdrawal.toLocaleString()}`,
+        description: `You only have $${assetBalance.toLocaleString()} available in ${asset}.`,
         variant: "destructive",
       });
       return;
@@ -95,11 +106,7 @@ export function WithdrawalModal({
     setIsSubmitting(true);
 
     try {
-      await apiClient.submitWithdrawal({
-        amount: numAmount,
-        asset,
-        walletAddress,
-      });
+      await createWithdrawalRequest(numAmount, asset, walletAddress);
 
       toast({
         title: "Withdrawal Request Submitted",
@@ -168,7 +175,7 @@ export function WithdrawalModal({
                   Amount (USD)
                 </Label>
                 <span className="text-xs sm:text-sm text-muted-foreground">
-                  Available: ${maxWithdrawal.toLocaleString()}
+                  Available in {asset}: ${maxWithdrawal.toLocaleString()}
                 </span>
               </div>
               <div className="relative">
