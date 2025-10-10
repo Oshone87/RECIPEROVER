@@ -42,7 +42,7 @@ export function WithdrawalModal({
   availableBalance = 0,
   onSuccess,
 }: WithdrawalModalProps) {
-  const [asset, setAsset] = useState("USDC");
+  const [asset, setAsset] = useState("BTC");
   const [amount, setAmount] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);

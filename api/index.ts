@@ -66,13 +66,58 @@ const investmentSchema = new mongoose.Schema({
   asset: { type: String, required: true },
   amount: { type: Number, required: true },
   period: { type: Number, required: true }, // in days
-  status: { type: String, enum: ["active", "completed", "cancelled"], default: "active" },
+  status: {
+    type: String,
+    enum: ["active", "completed", "cancelled"],
+    default: "active",
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
 const Investment =
   mongoose.models.Investment || mongoose.model("Investment", investmentSchema);
+
+// Deposit Request Schema
+const depositRequestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  amount: { type: Number, required: true },
+  asset: { type: String, required: true },
+  status: {
+    type: String,
+    enum: ["pending", "verified", "rejected"],
+    default: "pending",
+  },
+  transactionHash: { type: String },
+  submittedAt: { type: Date, default: Date.now },
+  processedAt: { type: Date },
+  adminNotes: { type: String },
+});
+
+const DepositRequest =
+  mongoose.models.DepositRequest ||
+  mongoose.model("DepositRequest", depositRequestSchema);
+
+// Withdrawal Request Schema
+const withdrawalRequestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  amount: { type: Number, required: true },
+  asset: { type: String, required: true },
+  walletAddress: { type: String },
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected", "completed"],
+    default: "pending",
+  },
+  transactionHash: { type: String },
+  submittedAt: { type: Date, default: Date.now },
+  processedAt: { type: Date },
+  adminNotes: { type: String },
+});
+
+const WithdrawalRequest =
+  mongoose.models.WithdrawalRequest ||
+  mongoose.model("WithdrawalRequest", withdrawalRequestSchema);
 
 // Database connection
 let isConnected = false;
@@ -306,19 +351,19 @@ export default async function handler(req: any, res: any) {
           return res.status(403).json({ message: "Admin access required" });
         }
 
-        // Get all users (excluding passwords)
-        const users = await User.find({}, { password: 0 });
+        // Get all users (excluding passwords) shaped for admin UI
+        const users = await User.find({}, { password: 0 }).sort({
+          createdAt: -1,
+        });
 
         return res.status(200).json({
           message: "Users retrieved successfully",
-          users: users.map((user) => ({
-            id: user._id,
-            email: user.email,
-            role: user.role,
-            kycStatus: user.kycStatus,
-            isVerified: user.isVerified,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt,
+          users: users.map((u) => ({
+            _id: u._id,
+            email: u.email,
+            isVerified: u.isVerified,
+            kycStatus: u.kycStatus,
+            createdAt: u.createdAt,
           })),
         });
       } catch (error) {
@@ -495,7 +540,9 @@ export default async function handler(req: any, res: any) {
           const investments = await Investment.find({}).sort({ createdAt: -1 });
           return res.status(200).json({ investments });
         }
-        const investments = await Investment.find({ userId: decoded.userId }).sort({ createdAt: -1 });
+        const investments = await Investment.find({
+          userId: decoded.userId,
+        }).sort({ createdAt: -1 });
         return res.status(200).json({ investments });
       } catch (e) {
         return res.status(401).json({ message: "Invalid token" });
@@ -542,7 +589,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // Platform stats (admin only)
+    // Platform stats (admin only) - return shape expected by frontend
     if (req.url === "/api/admin/stats" && req.method === "GET") {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -557,15 +604,17 @@ export default async function handler(req: any, res: any) {
         }
 
         const totalUsers = await User.countDocuments({});
-        const kycPending = await KYCRequest.countDocuments({
+        const activeUsers = await User.countDocuments({ isVerified: true });
+        const pendingKyc = await KYCRequest.countDocuments({
           status: "pending",
         });
-        const kycApproved = await KYCRequest.countDocuments({
-          status: "approved",
+        const pendingDeposits = await DepositRequest.countDocuments({
+          status: "pending",
         });
-        const kycRejected = await KYCRequest.countDocuments({
-          status: "rejected",
+        const pendingWithdrawals = await WithdrawalRequest.countDocuments({
+          status: "pending",
         });
+        const totalInvestments = await Investment.countDocuments({});
 
         // Sum totalBalance across users
         const agg = await AssetBalance.aggregate([
@@ -574,13 +623,15 @@ export default async function handler(req: any, res: any) {
         const totalTVL = (agg && agg[0] && agg[0].total) || 0;
 
         return res.status(200).json({
-          users: { total: totalUsers },
-          kyc: {
-            pending: kycPending,
-            approved: kycApproved,
-            rejected: kycRejected,
+          stats: {
+            totalUsers,
+            activeUsers,
+            totalPlatformValue: totalTVL,
+            totalInvestments,
+            pendingWithdrawals,
+            pendingDeposits,
+            pendingKyc,
           },
-          tvl: totalTVL,
         });
       } catch (e) {
         return res.status(401).json({ message: "Invalid token" });
@@ -613,27 +664,310 @@ export default async function handler(req: any, res: any) {
 
         return res.status(200).json({
           message: "KYC requests retrieved successfully",
-          requests: kycRequests.map((request) => ({
-            id: request._id,
-            userId: request.userId._id,
-            userEmail: request.userId.email,
-            firstName: request.firstName,
-            lastName: request.lastName,
-            nationality: request.nationality,
-            phoneNumber: request.phoneNumber,
-            address: request.address,
-            city: request.city,
-            country: request.country,
-            postalCode: request.postalCode,
-            documentType: request.documentType,
-            documentNumber: request.documentNumber,
-            status: request.status,
-            submittedAt: request.submittedAt,
-            processedAt: request.processedAt,
-            adminNotes: request.adminNotes,
+          requests: kycRequests.map((r) => ({
+            _id: r._id,
+            userId: r.userId, // populated with { email }
+            firstName: r.firstName,
+            lastName: r.lastName,
+            status: r.status,
+            submissionDate: r.submittedAt,
           })),
         });
       } catch (error) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Update KYC request (admin only)
+    if (
+      req.url?.startsWith("/api/admin/kyc-requests/") &&
+      req.method === "PUT"
+    ) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const id = req.url.split("/").pop();
+        const { status, rejectionReason } = req.body || {};
+        const kyc = await KYCRequest.findByIdAndUpdate(
+          id,
+          { status, processedAt: new Date(), adminNotes: rejectionReason },
+          { new: true }
+        );
+        if (kyc && status === "approved") {
+          await User.findByIdAndUpdate(kyc.userId, {
+            isVerified: true,
+            kycStatus: "approved",
+          });
+        }
+        if (kyc && status === "rejected") {
+          await User.findByIdAndUpdate(kyc.userId, {
+            isVerified: false,
+            kycStatus: "rejected",
+          });
+        }
+        return res.status(200).json({ message: "KYC updated" });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Submit Deposit (user)
+    if (req.url === "/api/requests/deposit" && req.method === "POST") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const { amount, asset, transactionHash } = req.body || {};
+        if (!amount || !asset) {
+          return res.status(400).json({ message: "Missing fields" });
+        }
+        const reqDoc = new DepositRequest({
+          userId: decoded.userId,
+          amount,
+          asset,
+          transactionHash,
+        });
+        await reqDoc.save();
+        return res.status(201).json({ message: "Deposit submitted" });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Admin: Get Deposit Requests
+    if (req.url === "/api/admin/deposit-requests" && req.method === "GET") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const reqs = await DepositRequest.find({})
+          .populate("userId", "email")
+          .sort({ submittedAt: -1 });
+        return res.status(200).json({
+          requests: reqs.map((r) => ({
+            _id: r._id,
+            userId: r.userId,
+            amount: r.amount,
+            asset: r.asset,
+            status: r.status,
+            submissionDate: r.submittedAt,
+            transactionHash: r.transactionHash,
+          })),
+        });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Admin: Update Deposit Request
+    if (
+      req.url?.startsWith("/api/admin/deposit-requests/") &&
+      req.method === "PUT"
+    ) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const id = req.url.split("/").pop();
+        const { status, rejectionReason } = req.body || {};
+        const doc = await DepositRequest.findByIdAndUpdate(
+          id,
+          { status, processedAt: new Date(), adminNotes: rejectionReason },
+          { new: true }
+        );
+        if (doc && status === "verified") {
+          // Credit user's balance
+          const bal = await AssetBalance.findOne({ userId: doc.userId });
+          if (bal) {
+            const fieldMap: Record<string, keyof typeof bal> = {
+              BTC: "bitcoin" as any,
+              ETH: "ethereum" as any,
+              SOL: "solana" as any,
+              bitcoin: "bitcoin" as any,
+              ethereum: "ethereum" as any,
+              solana: "solana" as any,
+            };
+            const field = (fieldMap as any)[doc.asset] || "totalBalance";
+            // @ts-ignore dynamic index
+            bal[field] = (bal[field] || 0) + doc.amount;
+            bal.totalBalance = (bal.totalBalance || 0) + doc.amount;
+            await bal.save();
+          }
+        }
+        return res.status(200).json({ message: "Deposit updated" });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Submit Withdrawal (user)
+    if (req.url === "/api/requests/withdrawal" && req.method === "POST") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const { amount, asset, walletAddress } = req.body || {};
+        if (!amount || !asset) {
+          return res.status(400).json({ message: "Missing fields" });
+        }
+        const reqDoc = new WithdrawalRequest({
+          userId: decoded.userId,
+          amount,
+          asset,
+          walletAddress,
+        });
+        await reqDoc.save();
+        return res.status(201).json({ message: "Withdrawal submitted" });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Get current user's requests (kyc, deposits, withdrawals)
+    if (req.url === "/api/requests/my-requests" && req.method === "GET") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId === "admin") {
+          return res
+            .status(200)
+            .json({ kyc: [], deposits: [], withdrawals: [] });
+        }
+        const [kyc, deposits, withdrawals] = await Promise.all([
+          KYCRequest.find({ userId: decoded.userId }).sort({ submittedAt: -1 }),
+          DepositRequest.find({ userId: decoded.userId }).sort({
+            submittedAt: -1,
+          }),
+          WithdrawalRequest.find({ userId: decoded.userId }).sort({
+            submittedAt: -1,
+          }),
+        ]);
+        return res.status(200).json({ kyc, deposits, withdrawals });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Admin: Get Withdrawal Requests
+    if (req.url === "/api/admin/withdrawal-requests" && req.method === "GET") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const reqs = await WithdrawalRequest.find({})
+          .populate("userId", "email")
+          .sort({ submittedAt: -1 });
+        return res.status(200).json({
+          requests: reqs.map((r) => ({
+            _id: r._id,
+            userId: r.userId,
+            amount: r.amount,
+            asset: r.asset,
+            walletAddress: r.walletAddress,
+            status: r.status,
+            submissionDate: r.submittedAt,
+            transactionHash: r.transactionHash,
+          })),
+        });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Admin: Update Withdrawal Request
+    if (
+      req.url?.startsWith("/api/admin/withdrawal-requests/") &&
+      req.method === "PUT"
+    ) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const id = req.url.split("/").pop();
+        const { status, rejectionReason, transactionHash } = req.body || {};
+        const updated = await WithdrawalRequest.findByIdAndUpdate(
+          id,
+          {
+            status,
+            processedAt: new Date(),
+            adminNotes: rejectionReason,
+            transactionHash,
+          },
+          { new: true }
+        );
+        // Optionally deduct user's balance when completed
+        if (updated && status === "completed") {
+          const bal = await AssetBalance.findOne({ userId: updated.userId });
+          if (bal) {
+            const fieldMap: Record<string, keyof typeof bal> = {
+              BTC: "bitcoin" as any,
+              ETH: "ethereum" as any,
+              SOL: "solana" as any,
+              bitcoin: "bitcoin" as any,
+              ethereum: "ethereum" as any,
+              solana: "solana" as any,
+            };
+            const field = (fieldMap as any)[updated.asset] || "totalBalance";
+            // @ts-ignore dynamic index
+            bal[field] = Math.max(0, (bal[field] || 0) - updated.amount);
+            bal.totalBalance = Math.max(
+              0,
+              (bal.totalBalance || 0) - updated.amount
+            );
+            await bal.save();
+          }
+        }
+        return res.status(200).json({ message: "Withdrawal updated" });
+      } catch (e) {
         return res.status(401).json({ message: "Invalid token" });
       }
     }
