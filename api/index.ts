@@ -228,8 +228,52 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Get all users endpoint (admin only)
-    if (req.url === "/api/users" && req.method === "GET") {
+    // Get current user endpoint
+    if (
+      (req.url === "/auth/me" || req.url === "/api/auth/me") &&
+      req.method === "GET"
+    ) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId === "admin") {
+          return res.status(200).json({
+            user: {
+              id: "admin",
+              email: "davidanyia72@gmail.com",
+              role: "admin",
+              kycStatus: "approved",
+              isVerified: true,
+            },
+          });
+        }
+        const user = await User.findById(decoded.userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+        return res.status(200).json({
+          user: {
+            id: user._id,
+            email: user.email,
+            role: user.role,
+            kycStatus: user.kycStatus,
+            isVerified: user.isVerified,
+          },
+        });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Get all users endpoint (admin only). Support both /api/admin/users and /api/users
+    if (
+      (req.url === "/api/users" || req.url === "/api/admin/users") &&
+      req.method === "GET"
+    ) {
       // Check authorization header
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -455,10 +499,13 @@ export default async function handler(req: any, res: any) {
       url: req.url,
       method: req.method,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Handler error:", error);
     return res
       .status(500)
-      .json({ error: "Internal server error", details: error.message });
+      .json({
+        error: "Internal server error",
+        details: error?.message || String(error),
+      });
   }
 }

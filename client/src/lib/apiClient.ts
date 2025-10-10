@@ -1,7 +1,19 @@
 // API utility for backend communication
-const API_BASE_URL = import.meta.env.PROD
-  ? "https://reciperover-api.vercel.app/api" // Your Vercel app URL + /api
-  : "/api"; // Use relative path for development
+// Prefer same-origin /api to leverage Vercel serverless routing and avoid CORS.
+// Allow override via VITE_API_BASE_URL when deploying backend separately.
+const API_BASE_URL: string =
+  (import.meta.env as any).VITE_API_BASE_URL?.toString() || "/api";
+// Debug: surface the effective API base URL at runtime
+try {
+  // Avoid breaking SSR/build
+  // eslint-disable-next-line no-console
+  console.info(
+    "[ApiClient] Using API base:",
+    API_BASE_URL,
+    "env override:",
+    Boolean((import.meta.env as any).VITE_API_BASE_URL)
+  );
+} catch {}
 
 class ApiClient {
   private getAuthHeaders() {
