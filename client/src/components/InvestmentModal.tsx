@@ -92,6 +92,9 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
   const assetBalance = getAssetBalance(asset); // Get balance for specific asset
   const needsDeposit = amount > assetBalance; // Check against asset-specific balance
 
+  // Check if user is KYC verified
+  const isKYCVerified = user?.isVerified || false;
+
   const copyWalletAddress = () => {
     if (selectedAsset) {
       navigator.clipboard.writeText(selectedAsset.walletAddress);
@@ -196,7 +199,40 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {step === 1 && (
+          {step === 1 && !isKYCVerified && (
+            <div className="space-y-4">
+              <h3 className="font-semibold">KYC Verification Required</h3>
+              <Card className="p-6 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
+                <div className="flex items-center gap-4">
+                  <AlertCircle className="h-8 w-8 text-yellow-600" />
+                  <div>
+                    <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                      KYC Verification Required
+                    </h4>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                      You must complete KYC verification before making any
+                      investments. This is required for regulatory compliance
+                      and account security.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 p-4 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    <strong>How to complete KYC:</strong>
+                  </p>
+                  <ol className="text-sm text-yellow-700 dark:text-yellow-300 mt-2 space-y-1 list-decimal list-inside">
+                    <li>Click on your profile menu (top right)</li>
+                    <li>Select "Settings" from the dropdown</li>
+                    <li>Click on "Complete KYC Verification"</li>
+                    <li>Fill out the required information</li>
+                    <li>Wait for admin approval (typically 1-24 hours)</li>
+                  </ol>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {step === 1 && isKYCVerified && (
             <div className="space-y-4">
               <h3 className="font-semibold">Select Investment Tier</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -263,9 +299,11 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
               </div>
               <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>Note:</strong> You can only invest using the
-                  cryptocurrency you select. Make sure you have sufficient
-                  balance in that specific asset.
+                  <strong>Important:</strong> You can only invest using
+                  cryptocurrency you have deposited. If you don't have
+                  sufficient balance in your chosen asset, you'll need to
+                  deposit first. Deposits require admin approval (typically 1-24
+                  hours).
                 </p>
               </div>
             </div>
@@ -567,6 +605,17 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
           </Button>
           <Button
             onClick={() => {
+              // If step 1 and KYC not verified, don't allow progression
+              if (step === 1 && !isKYCVerified) {
+                toast({
+                  title: "KYC Verification Required",
+                  description:
+                    "Please complete KYC verification before proceeding with investments.",
+                  variant: "destructive",
+                });
+                return;
+              }
+
               const maxStep = getMaxStep();
               if (step < maxStep) {
                 setStep(step + 1);
@@ -580,13 +629,16 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
               }
             }}
             disabled={
+              (step === 1 && !isKYCVerified) ||
               (step === 4 && needsDeposit && !walletCopied) ||
               (step === 3 && amount < selectedTier.min) ||
               (step === 3 && amount > assetBalance && !needsDeposit)
             }
             data-testid="button-modal-next"
           >
-            {step === getMaxStep()
+            {step === 1 && !isKYCVerified
+              ? "Complete KYC First"
+              : step === getMaxStep()
               ? needsDeposit
                 ? "Submit Deposit Request"
                 : "Confirm & Invest"

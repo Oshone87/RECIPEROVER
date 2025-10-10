@@ -108,7 +108,7 @@ export function Navbar() {
               </div>
             </Link>
             {/* Secret admin access dot - only visible on hover */}
-            <Link href="/admin-dashboard">
+            <Link href="/admin-login">
               <div
                 className="w-2 h-2 rounded-full bg-primary opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer ml-1"
                 title="Admin Access"

@@ -14,6 +14,7 @@ import Signup from "@/pages/Signup";
 import KYC from "@/pages/KYC";
 import Dashboard from "@/pages/Dashboard";
 import Admin from "@/pages/Admin";
+import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 
 function Router() {
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/kyc" component={KYC} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/admin" component={Admin} />
+      <Route path="/admin-login" component={AdminLogin} />
       <Route path="/admin-dashboard" component={AdminDashboard} />
       <Route component={NotFound} />
     </Switch>

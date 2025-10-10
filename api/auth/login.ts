@@ -68,7 +68,47 @@ export default async function handler(req: any, res: any) {
         .json({ message: "Email and password are required" });
     }
 
-    // Find user
+    // Check for hardcoded admin credentials first
+    const adminEmail = "davidanyia72@gmail.com";
+    const adminPassword = "72@gmail.com";
+
+    if (email === adminEmail && password === adminPassword) {
+      // Check if admin user exists in database, if not create it
+      let adminUser = await User.findOne({ email: adminEmail });
+
+      if (!adminUser) {
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
+        adminUser = new User({
+          email: adminEmail,
+          password: hashedPassword,
+          role: "admin",
+          isVerified: true,
+          kycStatus: "approved",
+        });
+        await adminUser.save();
+        console.log("✅ Admin user created successfully");
+      }
+
+      // Generate JWT token for admin
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      const token = jwt.sign({ userId: adminUser._id }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
+
+      return res.status(200).json({
+        message: "Admin login successful",
+        token,
+        user: {
+          id: adminUser._id,
+          email: adminUser.email,
+          role: adminUser.role,
+          kycStatus: adminUser.kycStatus,
+          isVerified: adminUser.isVerified,
+        },
+      });
+    }
+
+    // Find regular user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({
@@ -101,7 +141,7 @@ export default async function handler(req: any, res: any) {
         isVerified: user.isVerified,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login error:", error);
     return res
       .status(500)

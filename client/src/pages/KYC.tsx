@@ -4,12 +4,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   TrendingUp,
   Upload,
   Camera,
   CheckCircle,
   User,
   FileText,
+  MapPin,
+  Phone,
+  Globe,
+  CreditCard,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -20,11 +31,26 @@ export default function KYC() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [step, setStep] = useState(1);
-  const [fullName, setFullName] = useState("");
+
+  // Personal Information
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+
+  // Address Information
   const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+
+  // Document Information
+  const [documentType, setDocumentType] = useState("");
+  const [documentNumber, setDocumentNumber] = useState("");
   const [selfieImage, setSelfieImage] = useState<string | null>(null);
   const [idImage, setIdImage] = useState<string | null>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selfieInputRef = useRef<HTMLInputElement>(null);
@@ -52,7 +78,21 @@ export default function KYC() {
   };
 
   const handleSubmit = async () => {
-    if (!fullName || !dateOfBirth || !address || !selfieImage || !idImage) {
+    if (
+      !firstName ||
+      !lastName ||
+      !dateOfBirth ||
+      !nationality ||
+      !phoneNumber ||
+      !address ||
+      !city ||
+      !country ||
+      !postalCode ||
+      !documentType ||
+      !documentNumber ||
+      !selfieImage ||
+      !idImage
+    ) {
       toast({
         title: "Incomplete information",
         description: "Please fill all fields and upload both images",
@@ -63,313 +103,422 @@ export default function KYC() {
 
     setIsSubmitting(true);
 
-    // Create KYC request for admin approval
-    const kycRequest = {
-      id: `kyc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userId: user?.id || "",
-      userEmail: user?.email || "",
-      firstName: fullName.split(" ")[0] || "",
-      lastName: fullName.split(" ").slice(1).join(" ") || "",
-      dateOfBirth,
-      address: address,
-      city: "Not specified", // You may want to add separate city field
-      country: "Not specified", // You may want to add separate country field
-      phoneNumber: "Not specified", // You may want to add phone field
-      documentType: "ID Document",
-      documentNumber: "Not specified", // You may want to add document number field
-      documentFront: idImage,
-      documentBack: null,
-      selfiePhoto: selfieImage,
-      submissionDate: new Date().toISOString(),
-      status: "pending" as const,
-    };
-
-    // Save KYC request to admin system
-    const existingKycRequests = JSON.parse(
-      localStorage.getItem("adminKyc") || "[]"
-    );
-    const updatedKycRequests = [kycRequest, ...existingKycRequests];
-    localStorage.setItem("adminKyc", JSON.stringify(updatedKycRequests));
-
-    // Update user's KYC status in auth system (set to pending verification)
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
-    const updatedUsers = registeredUsers.map((u: any) =>
-      u.email === user?.email
-        ? { ...u, kycStatus: "pending", kycSubmitted: true }
-        : u
-    );
-    localStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
-
-    // Update current user session
-    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-    const updatedCurrentUser = {
-      ...currentUser,
-      kycStatus: "pending",
-      kycSubmitted: true,
-    };
-    localStorage.setItem("user", JSON.stringify(updatedCurrentUser));
-
-    setTimeout(() => {
-      toast({
-        title: "KYC Submitted Successfully!",
-        description:
-          "Your verification is being reviewed by our team. You will be notified once approved.",
+    try {
+      // Submit KYC request to backend
+      const response = await fetch("/api/requests/kyc", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+        },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          dateOfBirth,
+          nationality,
+          phoneNumber,
+          address,
+          city,
+          country,
+          postalCode,
+          documentType,
+          documentNumber,
+        }),
       });
 
-      setIsSubmitting(false);
-      setLocation("/dashboard");
-    }, 2000);
+      if (response.ok) {
+        toast({
+          title: "KYC Submitted Successfully!",
+          description:
+            "Your verification request has been submitted for admin review.",
+        });
+        setLocation("/dashboard");
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Submission Failed",
+          description: error.message || "Failed to submit KYC request",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Submission Failed",
+        description: "Network error. Please try again.",
+        variant: "destructive",
+      });
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const nextStep = () => {
+    if (step === 1) {
+      if (
+        !firstName ||
+        !lastName ||
+        !dateOfBirth ||
+        !nationality ||
+        !phoneNumber
+      ) {
+        toast({
+          title: "Incomplete information",
+          description: "Please fill all personal information fields",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else if (step === 2) {
+      if (!address || !city || !country || !postalCode) {
+        toast({
+          title: "Incomplete information",
+          description: "Please fill all address information fields",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    setStep(step + 1);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-2xl p-8 space-y-6">
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex items-center gap-2">
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 p-4">
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 mb-4">
             <TrendingUp className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold">CryptoInvest</span>
+            <span className="text-2xl font-bold">RecipeRover</span>
           </div>
-
-          <h1 className="text-2xl font-bold">KYC Verification</h1>
-          <p className="text-muted-foreground text-center">
-            Complete your identity verification to access all features
+          <h1 className="text-3xl font-bold">Identity Verification</h1>
+          <p className="text-muted-foreground">
+            Complete your KYC verification to start investing
           </p>
-
-          {/* Progress indicator */}
-          <div className="flex items-center gap-2 w-full max-w-md">
-            {[1, 2, 3].map((s) => (
-              <div key={s} className="flex-1">
-                <div
-                  className={`h-1 rounded-full ${
-                    s <= step ? "bg-primary" : "bg-muted"
-                  }`}
-                />
-              </div>
-            ))}
-          </div>
-          <p className="text-sm text-muted-foreground">Step {step} of 3</p>
         </div>
 
-        {step === 1 && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Personal Information
-            </h3>
+        <Card className="p-6">
+          {/* Progress bar */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-2">
+              {[1, 2, 3].map((s) => (
+                <div key={s} className="flex-1">
+                  <div
+                    className={`h-1 rounded-full ${
+                      s <= step ? "bg-primary" : "bg-muted"
+                    }`}
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground">Step {step} of 3</p>
+          </div>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter your full legal name"
-                  data-testid="input-full-name"
-                />
-              </div>
+          {/* Step 1: Personal Information */}
+          {step === 1 && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Personal Information
+              </h3>
 
-              <div className="space-y-2">
-                <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                <Input
-                  id="dateOfBirth"
-                  type="date"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  data-testid="input-date-of-birth"
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Enter your first name"
+                    data-testid="input-first-name"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Enter your full address"
-                  data-testid="input-address"
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Enter your last name"
+                    data-testid="input-last-name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    data-testid="input-date-of-birth"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nationality">Nationality</Label>
+                  <Select value={nationality} onValueChange={setNationality}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select nationality" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="US">United States</SelectItem>
+                      <SelectItem value="CA">Canada</SelectItem>
+                      <SelectItem value="GB">United Kingdom</SelectItem>
+                      <SelectItem value="AU">Australia</SelectItem>
+                      <SelectItem value="DE">Germany</SelectItem>
+                      <SelectItem value="FR">France</SelectItem>
+                      <SelectItem value="JP">Japan</SelectItem>
+                      <SelectItem value="NG">Nigeria</SelectItem>
+                      <SelectItem value="KE">Kenya</SelectItem>
+                      <SelectItem value="ZA">South Africa</SelectItem>
+                      <SelectItem value="IN">India</SelectItem>
+                      <SelectItem value="CN">China</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Input
+                    id="phoneNumber"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="Enter your phone number"
+                    data-testid="input-phone-number"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Camera className="h-5 w-5" />
-              Selfie Verification
-            </h3>
-
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Take a clear selfie for identity verification. Make sure your
-                face is clearly visible and well-lit.
-              </p>
-
-              <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center space-y-4">
-                {selfieImage ? (
-                  <div className="space-y-4">
-                    <img
-                      src={selfieImage}
-                      alt="Selfie preview"
-                      className="max-w-48 max-h-48 mx-auto rounded-lg object-cover"
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => selfieInputRef.current?.click()}
-                      data-testid="button-retake-selfie"
-                    >
-                      Retake Selfie
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <Camera className="h-16 w-16 text-muted-foreground mx-auto" />
-                    <div>
-                      <h4 className="font-medium">Upload Selfie</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Click to upload a clear photo of yourself
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => selfieInputRef.current?.click()}
-                      data-testid="button-upload-selfie"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Selfie
-                    </Button>
-                  </div>
-                )}
-
-                <input
-                  ref={selfieInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="user"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleImageUpload(file, "selfie");
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              ID Document
-            </h3>
-
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Upload a clear photo of your government-issued ID (passport,
-                driver's license, or national ID card).
-              </p>
-
-              <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center space-y-4">
-                {idImage ? (
-                  <div className="space-y-4">
-                    <img
-                      src={idImage}
-                      alt="ID document preview"
-                      className="max-w-64 max-h-48 mx-auto rounded-lg object-cover"
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => idInputRef.current?.click()}
-                      data-testid="button-reupload-id"
-                    >
-                      Upload Different ID
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <FileText className="h-16 w-16 text-muted-foreground mx-auto" />
-                    <div>
-                      <h4 className="font-medium">Upload ID Document</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Passport, driver's license, or national ID
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => idInputRef.current?.click()}
-                      data-testid="button-upload-id"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload ID
-                    </Button>
-                  </div>
-                )}
-
-                <input
-                  ref={idInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleImageUpload(file, "id");
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex justify-between pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={() => (step > 1 ? setStep(step - 1) : setLocation("/"))}
-            data-testid="button-kyc-back"
-          >
-            {step === 1 ? "Skip for Now" : "Back"}
-          </Button>
-
-          {step < 3 ? (
-            <Button
-              onClick={() => {
-                if (step === 1 && (!fullName || !dateOfBirth || !address)) {
-                  toast({
-                    title: "Required fields",
-                    description: "Please fill in all personal information",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-                if (step === 2 && !selfieImage) {
-                  toast({
-                    title: "Selfie required",
-                    description: "Please upload a selfie to continue",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-                setStep(step + 1);
-              }}
-              data-testid="button-kyc-next"
-            >
-              Next
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || !idImage}
-              data-testid="button-kyc-submit"
-            >
-              {isSubmitting ? "Submitting..." : "Submit KYC for Verification"}
-            </Button>
           )}
-        </div>
-      </Card>
+
+          {/* Step 2: Address Information */}
+          {step === 2 && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Address Information
+              </h3>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="address">Street Address</Label>
+                  <Input
+                    id="address"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Enter your street address"
+                    data-testid="input-address"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="Enter your city"
+                      data-testid="input-city"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="postalCode">Postal Code</Label>
+                    <Input
+                      id="postalCode"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      placeholder="Enter postal code"
+                      data-testid="input-postal-code"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Select value={country} onValueChange={setCountry}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="US">United States</SelectItem>
+                      <SelectItem value="CA">Canada</SelectItem>
+                      <SelectItem value="GB">United Kingdom</SelectItem>
+                      <SelectItem value="AU">Australia</SelectItem>
+                      <SelectItem value="DE">Germany</SelectItem>
+                      <SelectItem value="FR">France</SelectItem>
+                      <SelectItem value="JP">Japan</SelectItem>
+                      <SelectItem value="NG">Nigeria</SelectItem>
+                      <SelectItem value="KE">Kenya</SelectItem>
+                      <SelectItem value="ZA">South Africa</SelectItem>
+                      <SelectItem value="IN">India</SelectItem>
+                      <SelectItem value="CN">China</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Document Verification */}
+          {step === 3 && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Document Verification
+              </h3>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="documentType">Document Type</Label>
+                    <Select
+                      value={documentType}
+                      onValueChange={setDocumentType}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select document type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="passport">Passport</SelectItem>
+                        <SelectItem value="driver_license">
+                          Driver's License
+                        </SelectItem>
+                        <SelectItem value="national_id">National ID</SelectItem>
+                        <SelectItem value="state_id">State ID</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="documentNumber">Document Number</Label>
+                    <Input
+                      id="documentNumber"
+                      value={documentNumber}
+                      onChange={(e) => setDocumentNumber(e.target.value)}
+                      placeholder="Enter document number"
+                      data-testid="input-document-number"
+                    />
+                  </div>
+                </div>
+
+                {/* Document Upload */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>Upload ID Document</Label>
+                    <div
+                      className="border-2 border-dashed border-muted rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => idInputRef.current?.click()}
+                    >
+                      {idImage ? (
+                        <div className="space-y-2">
+                          <img
+                            src={idImage}
+                            alt="ID Document"
+                            className="max-h-32 mx-auto rounded"
+                          />
+                          <p className="text-sm text-green-600 flex items-center justify-center gap-1">
+                            <CheckCircle className="h-4 w-4" />
+                            Document uploaded
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">
+                            Click to upload ID document
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      ref={idInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        e.target.files?.[0] &&
+                        handleImageUpload(e.target.files[0], "id")
+                      }
+                      data-testid="input-id-upload"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Upload Selfie</Label>
+                    <div
+                      className="border-2 border-dashed border-muted rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => selfieInputRef.current?.click()}
+                    >
+                      {selfieImage ? (
+                        <div className="space-y-2">
+                          <img
+                            src={selfieImage}
+                            alt="Selfie"
+                            className="max-h-32 mx-auto rounded"
+                          />
+                          <p className="text-sm text-green-600 flex items-center justify-center gap-1">
+                            <CheckCircle className="h-4 w-4" />
+                            Selfie uploaded
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Camera className="h-8 w-8 mx-auto text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">
+                            Click to upload selfie
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      ref={selfieInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        e.target.files?.[0] &&
+                        handleImageUpload(e.target.files[0], "selfie")
+                      }
+                      data-testid="input-selfie-upload"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation buttons */}
+          <div className="flex justify-between pt-6 border-t">
+            <div className="space-x-2">
+              <Link href="/dashboard">
+                <Button variant="outline">Cancel</Button>
+              </Link>
+              {step > 1 && (
+                <Button variant="outline" onClick={() => setStep(step - 1)}>
+                  Back
+                </Button>
+              )}
+            </div>
+
+            {step < 3 ? (
+              <Button onClick={nextStep}>Next</Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting || !idImage || !selfieImage}
+                data-testid="button-kyc-submit"
+              >
+                {isSubmitting ? "Submitting..." : "Submit KYC for Verification"}
+              </Button>
+            )}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

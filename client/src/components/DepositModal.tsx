@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useInvestment } from "@/contexts/InvestmentContext";
+import { apiClient } from "@/lib/apiClient";
 
 const DEPOSIT_ASSETS = [
   {
@@ -53,9 +53,14 @@ const DEPOSIT_ASSETS = [
 interface DepositModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
-export function DepositModal({ open, onOpenChange }: DepositModalProps) {
+export function DepositModal({
+  open,
+  onOpenChange,
+  onSuccess,
+}: DepositModalProps) {
   const [step, setStep] = useState(1);
   const [asset, setAsset] = useState("BTC");
   const [amount, setAmount] = useState("");
@@ -64,7 +69,6 @@ export function DepositModal({ open, onOpenChange }: DepositModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { createDepositRequest } = useInvestment();
 
   const selectedAsset = DEPOSIT_ASSETS.find((a) => a.id === asset);
   const numAmount = parseFloat(amount) || 0;
@@ -103,10 +107,13 @@ export function DepositModal({ open, onOpenChange }: DepositModalProps) {
 
     setIsSubmitting(true);
 
-    // Use the createDepositRequest function from InvestmentContext
-    createDepositRequest(numAmount, asset, transactionHash || undefined);
+    try {
+      await apiClient.submitDeposit({
+        amount: numAmount,
+        asset,
+        transactionHash: transactionHash || undefined,
+      });
 
-    setTimeout(() => {
       toast({
         title: "Deposit Request Submitted",
         description: `Your deposit request for $${numAmount.toLocaleString()} in ${asset} has been submitted. Funds will be added to your account once verified by admin.`,
@@ -117,8 +124,20 @@ export function DepositModal({ open, onOpenChange }: DepositModalProps) {
       setAmount("");
       setTransactionHash("");
       setWalletCopied(false);
+
+      // Call onSuccess to refresh dashboard data
+      onSuccess?.();
+    } catch (error: any) {
+      toast({
+        title: "Submission failed",
+        description:
+          error.response?.data?.message ||
+          "Failed to submit deposit request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
   };
 
   const resetModal = () => {

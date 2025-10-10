@@ -21,7 +21,7 @@ import { TbCurrencySolana } from "react-icons/tb";
 import { DollarSign, AlertTriangle, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useInvestment } from "@/contexts/InvestmentContext";
+import { apiClient } from "@/lib/apiClient";
 
 const WITHDRAWAL_ASSETS = [
   { id: "BTC", name: "Bitcoin", icon: SiBitcoin, fee: "0.0005 BTC" },
@@ -33,12 +33,14 @@ interface WithdrawalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   availableBalance?: number;
+  onSuccess?: () => void;
 }
 
 export function WithdrawalModal({
   open,
   onOpenChange,
   availableBalance = 0,
+  onSuccess,
 }: WithdrawalModalProps) {
   const [asset, setAsset] = useState("USDC");
   const [amount, setAmount] = useState("");
@@ -46,7 +48,6 @@ export function WithdrawalModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { createWithdrawalRequest } = useInvestment();
 
   const selectedAsset = WITHDRAWAL_ASSETS.find((a) => a.id === asset);
   const numAmount = parseFloat(amount) || 0;
@@ -54,25 +55,6 @@ export function WithdrawalModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Check KYC verification status
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
-    const currentUser = registeredUsers.find(
-      (u: any) => u.email === user?.email
-    );
-    const isKycVerified = currentUser?.isVerified || false;
-
-    if (!isKycVerified) {
-      toast({
-        title: "KYC Verification Required",
-        description:
-          "You must complete and have your KYC verification approved before making withdrawals.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     if (!walletAddress || !amount) {
       toast({
@@ -112,10 +94,13 @@ export function WithdrawalModal({
 
     setIsSubmitting(true);
 
-    // Use the context function to create withdrawal request
-    createWithdrawalRequest(numAmount, asset, walletAddress);
+    try {
+      await apiClient.submitWithdrawal({
+        amount: numAmount,
+        asset,
+        walletAddress,
+      });
 
-    setTimeout(() => {
       toast({
         title: "Withdrawal Request Submitted",
         description: `Your withdrawal request for $${numAmount.toLocaleString()} in ${asset} has been submitted. It will be processed by an administrator within 24 hours.`,
@@ -124,8 +109,20 @@ export function WithdrawalModal({
       onOpenChange(false);
       setAmount("");
       setWalletAddress("");
+
+      // Call onSuccess to refresh dashboard data
+      onSuccess?.();
+    } catch (error: any) {
+      toast({
+        title: "Submission failed",
+        description:
+          error.response?.data?.message ||
+          "Failed to submit withdrawal request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
   };
 
   return (

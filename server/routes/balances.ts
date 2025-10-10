@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { AssetBalance } from "../models/AssetBalance";
+import { Transaction } from "../models/Transaction";
 import { authenticate, AuthRequest } from "../middleware/auth";
 
 const router = Router();
@@ -13,10 +14,10 @@ router.get("/", authenticate, async (req: AuthRequest, res) => {
     if (!userBalance) {
       userBalance = new AssetBalance({
         userId: req.userId,
-        bitcoin: 1000,
-        ethereum: 1000,
-        solana: 1000,
-        totalBalance: 3000,
+        bitcoin: 0,
+        ethereum: 0,
+        solana: 0,
+        totalBalance: 0,
       });
       await userBalance.save();
       console.log(`✅ Created initial balance for user ${req.userId}`);
@@ -138,6 +139,32 @@ router.post("/withdraw", authenticate, async (req: AuthRequest, res) => {
     });
   } catch (error) {
     console.error("❌ Withdrawal error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Get user's transaction history
+router.get("/transactions", authenticate, async (req: AuthRequest, res) => {
+  try {
+    const transactions = await Transaction.find({ userId: req.userId })
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.json({
+      transactions: transactions.map((tx) => ({
+        id: tx._id,
+        type: tx.type,
+        asset: tx.asset,
+        amount: tx.amount,
+        status: tx.status,
+        description: tx.description,
+        transactionHash: tx.transactionHash,
+        date: tx.createdAt,
+        completedAt: tx.completedAt,
+      })),
+    });
+  } catch (error) {
+    console.error("❌ Get transactions error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });

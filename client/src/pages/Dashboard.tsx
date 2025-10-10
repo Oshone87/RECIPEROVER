@@ -16,7 +16,6 @@ import {
   ArrowDownRight,
   Wallet,
   Upload,
-  Shield,
   AlertTriangle,
   CheckCircle,
   Clock,
@@ -26,6 +25,7 @@ import { useInvestment } from "@/contexts/InvestmentContext";
 import { useToast } from "@/hooks/use-toast";
 import { SiBitcoin, SiEthereum } from "react-icons/si";
 import { TbCurrencySolana } from "react-icons/tb";
+import { apiClient } from "@/lib/apiClient";
 
 export default function Dashboard() {
   const { isAuthenticated, user } = useAuth();
@@ -45,6 +45,45 @@ export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+
+  // Real user data from API
+  const [realBalances, setRealBalances] = useState({
+    bitcoin: 0,
+    ethereum: 0,
+    solana: 0,
+    totalBalance: 0,
+  });
+  const [realTransactions, setRealTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch real user data
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserData();
+    }
+  }, [isAuthenticated]);
+
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      const [balancesResponse, transactionsResponse] = await Promise.all([
+        apiClient.getBalances(),
+        apiClient.getTransactions(),
+      ]);
+
+      setRealBalances(balancesResponse.balances);
+      setRealTransactions(transactionsResponse.transactions);
+    } catch (error) {
+      console.error("Failed to fetch user data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load account data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Get user's KYC status
   const getUserKycStatus = () => {
@@ -73,8 +112,24 @@ export default function Dashboard() {
     return null; // Prevent flash before redirect
   }
 
-  const totalBalance = balance + getTotalInvested() + getTotalEarnings();
-  const availableBalance = getAvailableBalance();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Loading your dashboard...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Use real balances instead of mock data
+  const totalBalance = realBalances.totalBalance;
+  const availableBalance = realBalances.totalBalance;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -215,8 +270,8 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.length > 0 ? (
-                    transactions.map((tx) => (
+                  {realTransactions.length > 0 ? (
+                    realTransactions.map((tx: any) => (
                       <tr
                         key={tx.id}
                         className="border-b hover-elevate"
@@ -227,8 +282,12 @@ export default function Dashboard() {
                         </td>
                         <td className="py-2 sm:py-3 px-2 sm:px-4">
                           <div className="flex items-center gap-1 sm:gap-2">
-                            <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
-                            <span className="text-xs sm:text-sm">
+                            {tx.type === "deposit" ? (
+                              <ArrowDownRight className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
+                            ) : (
+                              <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
+                            )}
+                            <span className="text-xs sm:text-sm capitalize">
                               {tx.type}
                             </span>
                           </div>
@@ -237,19 +296,17 @@ export default function Dashboard() {
                           {tx.asset}
                         </td>
                         <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-mono text-right">
-                          ${tx.amount.toLocaleString()}
+                          {tx.type === "deposit" ? "+" : "-"}$
+                          {tx.amount.toLocaleString()}
                         </td>
                         <td className="py-2 sm:py-3 px-2 sm:px-4">
                           <Badge
                             variant={
-                              tx.status === "Active"
+                              tx.status === "completed"
                                 ? "default"
-                                : tx.status === "Approved" ||
-                                  tx.status === "Completed"
+                                : tx.status === "pending"
                                 ? "secondary"
-                                : tx.status === "Failed"
-                                ? "destructive"
-                                : "outline"
+                                : "destructive"
                             }
                             className="text-xs"
                           >
@@ -282,10 +339,12 @@ export default function Dashboard() {
         open={withdrawalModalOpen}
         onOpenChange={setWithdrawalModalOpen}
         availableBalance={availableBalance}
+        onSuccess={fetchUserData}
       />
       <DepositModal
         open={depositModalOpen}
         onOpenChange={setDepositModalOpen}
+        onSuccess={fetchUserData}
       />
     </div>
   );

@@ -12,10 +12,26 @@ router.get("/", authenticate, async (req: AuthRequest, res) => {
       createdAt: -1,
     });
 
+    // Map the investments to include frontend-expected fields
+    const mappedInvestments = investments.map((inv) => ({
+      id: inv._id.toString(),
+      tier: inv.tier,
+      asset: inv.asset,
+      amount: inv.amount,
+      apr: inv.apr,
+      period: inv.period,
+      startDate: inv.startDate.toISOString(),
+      endDate: inv.endDate.toISOString(),
+      earned: inv.totalReturns || 0, // Map totalReturns to earned
+      status: inv.status,
+      progress: inv.dailyReturns || 0, // Map dailyReturns to progress
+      createdAt: inv.createdAt,
+    }));
+
     console.log(
       `📊 Found ${investments.length} investments for user ${req.userId}`
     );
-    res.json({ investments });
+    res.json({ investments: mappedInvestments });
   } catch (error) {
     console.error("❌ Get investments error:", error);
     res.status(500).json({ message: "Server error" });
@@ -30,6 +46,13 @@ router.post("/", authenticate, async (req: AuthRequest, res) => {
     console.log(
       `🔍 Creating investment: ${tier} tier, ${amount} ${asset}, ${period} days`
     );
+
+    // Check if user is KYC verified
+    if (!req.user.isVerified) {
+      return res.status(403).json({
+        message: "KYC verification required before making investments",
+      });
+    }
 
     // Check user's asset balance
     const userBalance = await AssetBalance.findOne({ userId: req.userId });
@@ -48,7 +71,7 @@ router.post("/", authenticate, async (req: AuthRequest, res) => {
     }
 
     // Calculate APR based on tier
-    const aprRates = { Bronze: 24, Silver: 30, Gold: 36 };
+    const aprRates = { Silver: 24, Gold: 30, Platinum: 36 };
     const apr = aprRates[tier as keyof typeof aprRates];
 
     if (!apr) {
@@ -104,7 +127,23 @@ router.get("/:id", authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ message: "Investment not found" });
     }
 
-    res.json({ investment });
+    // Map the investment to include frontend-expected fields
+    const mappedInvestment = {
+      id: investment._id.toString(),
+      tier: investment.tier,
+      asset: investment.asset,
+      amount: investment.amount,
+      apr: investment.apr,
+      period: investment.period,
+      startDate: investment.startDate.toISOString(),
+      endDate: investment.endDate.toISOString(),
+      earned: investment.totalReturns || 0,
+      status: investment.status,
+      progress: investment.dailyReturns || 0,
+      createdAt: investment.createdAt,
+    };
+
+    res.json({ investment: mappedInvestment });
   } catch (error) {
     console.error("❌ Get investment error:", error);
     res.status(500).json({ message: "Server error" });

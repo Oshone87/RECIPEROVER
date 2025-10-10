@@ -33,10 +33,9 @@ interface Transaction {
 }
 
 interface AssetBalance {
-  USDT: number;
   BTC: number;
   ETH: number;
-  BNB: number;
+  SOL: number;
 }
 
 interface InvestmentContextType {
@@ -88,10 +87,9 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth();
   const [balance, setBalance] = useState(0);
   const [assetBalances, setAssetBalances] = useState<AssetBalance>({
-    USDT: 0,
     BTC: 0,
     ETH: 0,
-    BNB: 0,
+    SOL: 0,
   });
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -147,21 +145,21 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
 
       // Update balances
       if (balancesResponse.balances) {
-        const balances = balancesResponse.balances.reduce(
-          (acc: any, balance: any) => {
-            acc[balance.asset] = balance.amount;
-            return acc;
-          },
-          {}
-        );
+        const backendBalances = balancesResponse.balances;
 
-        setAssetBalances(balances);
+        // Map backend keys to frontend keys
+        const mappedBalances = {
+          BTC: backendBalances.bitcoin || 0,
+          ETH: backendBalances.ethereum || 0,
+          SOL: backendBalances.solana || 0,
+        };
 
-        // Calculate total balance
-        const totalBalance = Object.values(balances).reduce(
-          (sum: number, amount: any) => sum + amount,
-          0
-        );
+        setAssetBalances(mappedBalances);
+
+        // Use total from backend or calculate it
+        const totalBalance =
+          backendBalances.totalBalance ||
+          mappedBalances.BTC + mappedBalances.ETH + mappedBalances.SOL;
         setBalance(totalBalance);
       }
 
@@ -205,7 +203,7 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
     } else {
       // Clear data when user logs out
       setBalance(0);
-      setAssetBalances({ USDT: 0, BTC: 0, ETH: 0, BNB: 0 });
+      setAssetBalances({ BTC: 0, ETH: 0, SOL: 0 });
       setInvestments([]);
       setTransactions([]);
     }
@@ -221,7 +219,7 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
       await apiClient.createInvestment(
         investmentData.tier,
         investmentData.amount,
-        investmentData.asset,
+        mapAssetToBackend(investmentData.asset),
         investmentData.period
       );
 
@@ -236,7 +234,7 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
 
   const deposit = async (amount: number, asset: string): Promise<boolean> => {
     try {
-      await apiClient.deposit(asset, amount);
+      await apiClient.deposit(mapAssetToBackend(asset), amount);
 
       // Refresh data to get updated balances
       await refreshData();
@@ -249,7 +247,7 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
 
   const withdraw = async (amount: number, asset: string): Promise<boolean> => {
     try {
-      await apiClient.withdraw(asset, amount);
+      await apiClient.withdraw(mapAssetToBackend(asset), amount);
 
       // Refresh data to get updated balances
       await refreshData();
@@ -260,47 +258,87 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Helper function to map frontend asset names to backend asset names
+  const mapAssetToBackend = (asset: string): string => {
+    const assetMap: { [key: string]: string } = {
+      BTC: "bitcoin",
+      ETH: "ethereum",
+      SOL: "solana",
+    };
+    return assetMap[asset] || asset.toLowerCase();
+  };
+
   // Placeholder functions for compatibility
-  const createDepositRequest = (
+  const createDepositRequest = async (
     amount: number,
     asset: string,
     transactionHash?: string
   ) => {
-    console.log("Deposit request created:", { amount, asset, transactionHash });
-    // Add transaction record for user
-    const newTransaction: Transaction = {
-      id: `txn_${Date.now()}`,
-      date: new Date().toISOString().split("T")[0],
-      type: "Deposit",
-      asset,
-      amount,
-      status: "Pending",
-      description: `Deposit request for ${asset}`,
-    };
-    setTransactions((prev) => [newTransaction, ...prev]);
+    try {
+      // Submit deposit request to backend
+      await apiClient.submitDeposit({
+        amount,
+        asset: mapAssetToBackend(asset),
+        transactionHash,
+      });
+
+      console.log("Deposit request created:", {
+        amount,
+        asset,
+        transactionHash,
+      });
+
+      // Add transaction record for user
+      const newTransaction: Transaction = {
+        id: `txn_${Date.now()}`,
+        date: new Date().toISOString().split("T")[0],
+        type: "Deposit",
+        asset,
+        amount,
+        status: "Pending",
+        description: `Deposit request for ${asset}`,
+      };
+      setTransactions((prev) => [newTransaction, ...prev]);
+    } catch (error) {
+      console.error("Failed to create deposit request:", error);
+      throw error;
+    }
   };
 
-  const createWithdrawalRequest = (
+  const createWithdrawalRequest = async (
     amount: number,
     asset: string,
     walletAddress: string
   ) => {
-    console.log("Withdrawal request created:", {
-      amount,
-      asset,
-      walletAddress,
-    });
-    // Add transaction record for user with pending status
-    const newTransaction: Transaction = {
-      id: `txn_${Date.now()}`,
-      date: new Date().toISOString().split("T")[0],
-      type: "Withdrawal",
-      asset,
-      amount,
-      status: "Pending",
-      description: `Withdrawal request to ${asset} wallet`,
-    };
-    setTransactions((prev) => [newTransaction, ...prev]);
+    try {
+      // Submit withdrawal request to backend
+      await apiClient.submitWithdrawal({
+        amount,
+        asset: mapAssetToBackend(asset),
+        walletAddress,
+      });
+
+      console.log("Withdrawal request created:", {
+        amount,
+        asset,
+        walletAddress,
+      });
+
+      // Add transaction record for user with pending status
+      const newTransaction: Transaction = {
+        id: `txn_${Date.now()}`,
+        date: new Date().toISOString().split("T")[0],
+        type: "Withdrawal",
+        asset,
+        amount,
+        status: "Pending",
+        description: `Withdrawal request to ${asset} wallet`,
+      };
+      setTransactions((prev) => [newTransaction, ...prev]);
+    } catch (error) {
+      console.error("Failed to create withdrawal request:", error);
+      throw error;
+    }
   };
 
   const value = {

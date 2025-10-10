@@ -31,12 +31,21 @@ export function InvestmentGrowthChart() {
 
   // Generate growth data for each investment
   const generateGrowthData = (investment: any): DailyGrowth[] => {
+    if (
+      !investment ||
+      !investment.startDate ||
+      !investment.apr ||
+      !investment.amount
+    ) {
+      return [];
+    }
+
     const startDate = new Date(investment.startDate);
     const currentDate = new Date();
     const data: DailyGrowth[] = [];
 
-    const dailyRate = investment.apr / 365 / 100;
-    let currentAmount = investment.amount;
+    const dailyRate = (investment.apr || 0) / 365 / 100;
+    let currentAmount = investment.amount || 0;
 
     for (
       let d = new Date(startDate);
@@ -59,15 +68,22 @@ export function InvestmentGrowthChart() {
   };
 
   const getDisplayInvestments = () => {
-    if (showAllInvestments) return activeInvestments;
+    const validInvestments = activeInvestments.filter(
+      (inv) => inv && inv.id && inv.amount && inv.tier && inv.asset
+    );
+
+    if (showAllInvestments) return validInvestments;
     if (selectedInvestment) {
-      return activeInvestments.filter((inv) => inv.id === selectedInvestment);
+      return validInvestments.filter((inv) => inv.id === selectedInvestment);
     }
-    return activeInvestments.slice(0, 1); // Show first investment if none selected
+    return validInvestments.slice(0, 1); // Show first investment if none selected
   };
 
   const getTotalGrowth = () => {
-    return activeInvestments.reduce((total, inv) => total + inv.earned, 0);
+    return activeInvestments.reduce(
+      (total, inv) => total + (inv.earned || 0),
+      0
+    );
   };
 
   const getTotalPercentage = () => {
@@ -237,7 +253,7 @@ export function InvestmentGrowthChart() {
 
                   <div className="text-right">
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      +${investment.earned.toFixed(2)}
+                      +${(investment.earned || 0).toFixed(2)}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Current Earnings
@@ -254,14 +270,14 @@ export function InvestmentGrowthChart() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Progress</span>
                       <span className="font-semibold">
-                        {investment.progress.toFixed(1)}%
+                        {(investment.progress || 0).toFixed(1)}%
                       </span>
                     </div>
                     <div className="h-3 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-500"
                         style={{
-                          width: `${Math.min(100, investment.progress)}%`,
+                          width: `${Math.min(100, investment.progress || 0)}%`,
                         }}
                       />
                     </div>
@@ -480,7 +496,7 @@ export function InvestmentGrowthChart() {
                         <p className="font-semibold">
                           $
                           {(
-                            investment.amount + investment.earned
+                            investment.amount + (investment.earned || 0)
                           ).toLocaleString()}
                         </p>
                       </div>

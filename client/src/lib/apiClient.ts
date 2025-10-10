@@ -1,7 +1,7 @@
 // API utility for backend communication
 const API_BASE_URL = import.meta.env.PROD
-  ? "https://crypto-invest-ip9u.vercel.app/api" // Your Vercel app URL + /api
-  : "http://localhost:5000/api";
+  ? "https://reciperover-api.vercel.app/api" // Your Vercel app URL + /api
+  : "/api"; // Use relative path for development
 
 class ApiClient {
   private getAuthHeaders() {
@@ -65,6 +65,13 @@ class ApiClient {
   // Balance APIs
   async getBalances() {
     const response = await fetch(`${API_BASE_URL}/balances`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async getTransactions() {
+    const response = await fetch(`${API_BASE_URL}/balances/transactions`, {
       headers: this.getAuthHeaders(),
     });
     return this.handleResponse(response);
@@ -145,9 +152,10 @@ class ApiClient {
   }
 
   async deleteUser(userId: string) {
-    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/admin/users`, {
       method: "DELETE",
       headers: this.getAuthHeaders(),
+      body: JSON.stringify({ userId }),
     });
     return this.handleResponse(response);
   }
@@ -156,6 +164,112 @@ class ApiClient {
     const response = await fetch(`${API_BASE_URL}/admin/stats`, {
       headers: this.getAuthHeaders(),
     });
+    return this.handleResponse(response);
+  }
+
+  // Request Management APIs
+  async submitKYC(kycData: any) {
+    const response = await fetch(`${API_BASE_URL}/requests/kyc`, {
+      method: "POST",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(kycData),
+    });
+    return this.handleResponse(response);
+  }
+
+  async submitDeposit(depositData: any) {
+    const response = await fetch(`${API_BASE_URL}/requests/deposit`, {
+      method: "POST",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(depositData),
+    });
+    return this.handleResponse(response);
+  }
+
+  async submitWithdrawal(withdrawalData: any) {
+    const response = await fetch(`${API_BASE_URL}/requests/withdrawal`, {
+      method: "POST",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(withdrawalData),
+    });
+    return this.handleResponse(response);
+  }
+
+  async getMyRequests() {
+    const response = await fetch(`${API_BASE_URL}/requests/my-requests`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  // Admin Request Management APIs
+  async getKYCRequests() {
+    const response = await fetch(`${API_BASE_URL}/admin/kyc-requests`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async updateKYCRequest(
+    requestId: string,
+    status: string,
+    rejectionReason?: string
+  ) {
+    const response = await fetch(
+      `${API_BASE_URL}/admin/kyc-requests/${requestId}`,
+      {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ status, rejectionReason }),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
+  async getDepositRequests() {
+    const response = await fetch(`${API_BASE_URL}/admin/deposit-requests`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async updateDepositRequest(
+    requestId: string,
+    status: string,
+    rejectionReason?: string
+  ) {
+    const response = await fetch(
+      `${API_BASE_URL}/admin/deposit-requests/${requestId}`,
+      {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ status, rejectionReason }),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
+  async getWithdrawalRequests() {
+    const response = await fetch(`${API_BASE_URL}/admin/withdrawal-requests`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async updateWithdrawalRequest(
+    requestId: string,
+    status: string,
+    rejectionReason?: string,
+    transactionHash?: string
+  ) {
+    const response = await fetch(
+      `${API_BASE_URL}/admin/withdrawal-requests/${requestId}`,
+      {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ status, rejectionReason, transactionHash }),
+      }
+    );
     return this.handleResponse(response);
   }
 

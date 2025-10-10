@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const investmentSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  tier: { type: String, enum: ["Bronze", "Silver", "Gold"], required: true },
+  tier: { type: String, enum: ["Silver", "Gold", "Platinum"], required: true },
   amount: { type: Number, required: true },
   asset: {
     type: String,

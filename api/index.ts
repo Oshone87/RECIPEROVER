@@ -120,7 +120,28 @@ export default async function handler(req: any, res: any) {
           .json({ message: "Email and password are required" });
       }
 
-      // Find user
+      // Check for hardcoded admin credentials
+      if (email === "davidanyia72@gmail.com" && password === "72@gmail.com") {
+        // Generate JWT token for admin
+        const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+        const token = jwt.sign({ userId: "admin" }, JWT_SECRET, {
+          expiresIn: "7d",
+        });
+
+        return res.status(200).json({
+          message: "Login successful",
+          token,
+          user: {
+            id: "admin",
+            email: "davidanyia72@gmail.com",
+            role: "admin",
+            kycStatus: "approved",
+            isVerified: true,
+          },
+        });
+      }
+
+      // Find regular user
       const user = await User.findOne({ email });
       if (!user) {
         return res.status(400).json({
@@ -153,6 +174,45 @@ export default async function handler(req: any, res: any) {
           isVerified: user.isVerified,
         },
       });
+    }
+
+    // Get all users endpoint (admin only)
+    if (req.url === "/api/users" && req.method === "GET") {
+      // Check authorization header
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+        // Check if it's admin
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+
+        // Get all users (excluding passwords)
+        const users = await User.find({}, { password: 0 });
+
+        return res.status(200).json({
+          message: "Users retrieved successfully",
+          users: users.map((user) => ({
+            id: user._id,
+            email: user.email,
+            role: user.role,
+            kycStatus: user.kycStatus,
+            isVerified: user.isVerified,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+          })),
+        });
+      } catch (error) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
     }
 
     return res.json({
