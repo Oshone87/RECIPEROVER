@@ -524,12 +524,9 @@ export default function AdminDashboard() {
                     <tbody>
                       {pagedUsers.length === 0 ? (
                         <tr>
-                          <td
-                            colSpan={6}
-                              <td className="py-3 px-4">
-                          >
+                          <td colSpan={6} className="py-8 text-center text-muted-foreground">
                             No users found
-                              <td className="py-3 px-4">
+                          </td>
                         </tr>
                       ) : (
                         pagedUsers
@@ -538,30 +535,19 @@ export default function AdminDashboard() {
                             (a, b) =>
                               new Date(b.createdAt).getTime() -
                               new Date(a.createdAt).getTime()
-                              <td className="py-3 px-4">
+                          )
                           .map((u) => (
-                            <tr
-                              key={u._id}
-                              className="border-b hover:bg-muted/50"
-                              <td className="py-3 px-4">
+                            <tr key={u._id} className="border-b hover:bg-muted/50">
                               <td className="py-3 px-4">
                                 <span className="font-medium">{u.email}</span>
                               </td>
                               <td className="py-3 px-4">
-                                <Badge
-                                  variant={
-                                    u.isVerified ? "default" : "secondary"
-                                  }
-                                >
+                                <Badge variant={u.isVerified ? "default" : "secondary"}>
                                   {u.isVerified ? "Yes" : "No"}
                                 </Badge>
                               </td>
                               <td className="py-3 px-4">
-                                <Badge
-                                  variant={
-                              <td className="py-3 px-4">
-                                <div className="flex flex-wrap gap-2">
-                                >
+                                <Badge variant={u.isDisabled ? "destructive" : "secondary"}>
                                   {u.isDisabled ? "Disabled" : "Active"}
                                 </Badge>
                               </td>
@@ -582,7 +568,7 @@ export default function AdminDashboard() {
                                 {new Date(u.createdAt).toLocaleDateString()}
                               </td>
                               <td className="py-3 px-4">
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -595,26 +581,14 @@ export default function AdminDashboard() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant={
-                                      u.isDisabled ? "default" : "destructive"
-                                    }
+                                    variant={u.isDisabled ? "default" : "destructive"}
                                     onClick={async () => {
                                       try {
-                                        await apiClient.updateUserDisabled(
-                                          u._id,
-                                          !u.isDisabled
-                                        );
-                                        toast({
-                                          title: u.isDisabled
-                                            ? "User enabled"
-                                            : "User disabled",
-                                        });
+                                        await apiClient.updateUserDisabled(u._id, !u.isDisabled);
+                                        toast({ title: u.isDisabled ? "User enabled" : "User disabled" });
                                         fetchAdminData();
                                       } catch (e) {
-                                        toast({
-                                          title: "Action failed",
-                                          variant: "destructive",
-                                        });
+                                        toast({ title: "Action failed", variant: "destructive" });
                                       }
                                     }}
                                   >
@@ -624,20 +598,13 @@ export default function AdminDashboard() {
                                     size="sm"
                                     variant="outline"
                                     onClick={async () => {
-                                      if (
-                                        confirm(
-                                          `Delete user ${u.email}? This cannot be undone.`
-                                        )
-                                      ) {
+                                      if (confirm(`Delete user ${u.email}? This cannot be undone.`)) {
                                         try {
                                           await apiClient.deleteUser(u._id);
                                           toast({ title: "User deleted" });
                                           fetchAdminData();
                                         } catch (e) {
-                                          toast({
-                                            title: "Delete failed",
-                                            variant: "destructive",
-                                          });
+                                          toast({ title: "Delete failed", variant: "destructive" });
                                         }
                                       }
                                     }}
