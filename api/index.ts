@@ -59,6 +59,21 @@ const AssetBalance =
 const KYCRequest =
   mongoose.models.KYCRequest || mongoose.model("KYCRequest", kycRequestSchema);
 
+// Investment Schema (minimal)
+const investmentSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  tier: { type: String, required: true },
+  asset: { type: String, required: true },
+  amount: { type: Number, required: true },
+  period: { type: Number, required: true }, // in days
+  status: { type: String, enum: ["active", "completed", "cancelled"], default: "active" },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+const Investment =
+  mongoose.models.Investment || mongoose.model("Investment", investmentSchema);
+
 // Database connection
 let isConnected = false;
 
@@ -404,6 +419,19 @@ export default async function handler(req: any, res: any) {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
         const userId = decoded.userId;
 
+        // If it's the admin token, return zero balances without DB lookup
+        if (userId === "admin") {
+          return res.status(200).json({
+            message: "Balances retrieved successfully",
+            balances: {
+              bitcoin: 0,
+              ethereum: 0,
+              solana: 0,
+              totalBalance: 0,
+            },
+          });
+        }
+
         // Find user balances
         const balances = await AssetBalance.findOne({ userId });
 
@@ -439,6 +467,122 @@ export default async function handler(req: any, res: any) {
           },
         });
       } catch (error) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Get balance transactions endpoint (stub)
+    if (req.url === "/api/balances/transactions" && req.method === "GET") {
+      // For now, return an empty transactions list.
+      // You can expand this to real transaction history later.
+      return res.status(200).json({
+        transactions: [],
+      });
+    }
+
+    // Get investments for current user
+    if (req.url === "/api/investments" && req.method === "GET") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId === "admin") {
+          // Admin: return all investments
+          const investments = await Investment.find({}).sort({ createdAt: -1 });
+          return res.status(200).json({ investments });
+        }
+        const investments = await Investment.find({ userId: decoded.userId }).sort({ createdAt: -1 });
+        return res.status(200).json({ investments });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Create an investment for current user
+    if (req.url === "/api/investments" && req.method === "POST") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId === "admin") {
+          return res.status(403).json({ message: "Users only" });
+        }
+
+        const { tier, amount, asset, period } = req.body || {};
+        if (!tier || !amount || !asset || !period) {
+          return res.status(400).json({ message: "Missing required fields" });
+        }
+
+        const inv = new Investment({
+          userId: decoded.userId,
+          tier,
+          amount,
+          asset,
+          period,
+          status: "active",
+        });
+        await inv.save();
+
+        // Optionally adjust balances here (skipped for now)
+
+        return res.status(201).json({
+          message: "Investment created",
+          investment: inv,
+        });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Platform stats (admin only)
+    if (req.url === "/api/admin/stats" && req.method === "GET") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+
+        const totalUsers = await User.countDocuments({});
+        const kycPending = await KYCRequest.countDocuments({
+          status: "pending",
+        });
+        const kycApproved = await KYCRequest.countDocuments({
+          status: "approved",
+        });
+        const kycRejected = await KYCRequest.countDocuments({
+          status: "rejected",
+        });
+
+        // Sum totalBalance across users
+        const agg = await AssetBalance.aggregate([
+          { $group: { _id: null, total: { $sum: "$totalBalance" } } },
+        ]);
+        const totalTVL = (agg && agg[0] && agg[0].total) || 0;
+
+        return res.status(200).json({
+          users: { total: totalUsers },
+          kyc: {
+            pending: kycPending,
+            approved: kycApproved,
+            rejected: kycRejected,
+          },
+          tvl: totalTVL,
+        });
+      } catch (e) {
         return res.status(401).json({ message: "Invalid token" });
       }
     }
@@ -501,11 +645,9 @@ export default async function handler(req: any, res: any) {
     });
   } catch (error: any) {
     console.error("Handler error:", error);
-    return res
-      .status(500)
-      .json({
-        error: "Internal server error",
-        details: error?.message || String(error),
-      });
+    return res.status(500).json({
+      error: "Internal server error",
+      details: error?.message || String(error),
+    });
   }
 }

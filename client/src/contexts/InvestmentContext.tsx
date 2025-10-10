@@ -133,6 +133,8 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
   // Load data from backend when user is authenticated
   const refreshData = async () => {
     if (!isAuthenticated) return;
+    const token = localStorage.getItem("authToken");
+    if (!token) return; // Avoid calling APIs without a token (pre-login)
 
     try {
       setLoading(true);
@@ -198,7 +200,8 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
 
   // Load data when user changes or component mounts
   useEffect(() => {
-    if (isAuthenticated) {
+    const token = localStorage.getItem("authToken");
+    if (isAuthenticated && token) {
       refreshData();
     } else {
       // Clear data when user logs out

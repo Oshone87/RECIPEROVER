@@ -71,8 +71,19 @@ export default function Dashboard() {
         apiClient.getTransactions(),
       ]);
 
-      setRealBalances(balancesResponse.balances);
-      setRealTransactions(transactionsResponse.transactions);
+      // Defensive parsing: ensure numeric values
+      const b = balancesResponse?.balances || {};
+      setRealBalances({
+        bitcoin: Number(b.bitcoin ?? 0),
+        ethereum: Number(b.ethereum ?? 0),
+        solana: Number(b.solana ?? 0),
+        totalBalance: Number(b.totalBalance ?? 0),
+      });
+
+      const tx = Array.isArray(transactionsResponse?.transactions)
+        ? transactionsResponse.transactions
+        : [];
+      setRealTransactions(tx as any);
     } catch (error) {
       console.error("Failed to fetch user data:", error);
       toast({
@@ -128,8 +139,8 @@ export default function Dashboard() {
   }
 
   // Use real balances instead of mock data
-  const totalBalance = realBalances.totalBalance;
-  const availableBalance = realBalances.totalBalance;
+  const totalBalance = Number(realBalances?.totalBalance ?? 0);
+  const availableBalance = Number(realBalances?.totalBalance ?? 0);
 
   return (
     <div className="min-h-screen flex flex-col">
