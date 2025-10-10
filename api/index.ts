@@ -214,9 +214,22 @@ export default async function handler(req: any, res: any) {
 
       await assetBalance.save();
 
+      // Generate JWT token so the user is authenticated right after signup
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
+
       return res.status(201).json({
         message: "User created successfully",
-        user: { email: user.email, id: user._id },
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+          kycStatus: user.kycStatus,
+          isVerified: user.isVerified,
+        },
       });
     }
 
@@ -373,8 +386,11 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // KYC submission endpoint
-    if (req.url === "/api/requests/kyc" && req.method === "POST") {
+    // KYC submission endpoint (support both with and without /api prefix)
+    if (
+      (req.url === "/api/requests/kyc" || req.url === "/requests/kyc") &&
+      req.method === "POST"
+    ) {
       const {
         firstName,
         lastName,
@@ -872,8 +888,12 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // Submit Deposit (user)
-    if (req.url === "/api/requests/deposit" && req.method === "POST") {
+    // Submit Deposit (user) (support both with and without /api prefix)
+    if (
+      (req.url === "/api/requests/deposit" ||
+        req.url === "/requests/deposit") &&
+      req.method === "POST"
+    ) {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return res.status(401).json({ message: "No token provided" });
@@ -979,8 +999,12 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // Submit Withdrawal (user)
-    if (req.url === "/api/requests/withdrawal" && req.method === "POST") {
+    // Submit Withdrawal (user) (support both with and without /api prefix)
+    if (
+      (req.url === "/api/requests/withdrawal" ||
+        req.url === "/requests/withdrawal") &&
+      req.method === "POST"
+    ) {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return res.status(401).json({ message: "No token provided" });
