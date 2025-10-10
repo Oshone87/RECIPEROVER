@@ -172,6 +172,15 @@ class ApiClient {
     return this.handleResponse(response);
   }
 
+  async updateUserDisabled(userId: string, disabled: boolean) {
+    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+      method: "PUT",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ disabled }),
+    });
+    return this.handleResponse(response);
+  }
+
   async getPlatformStats() {
     const response = await fetch(`${API_BASE_URL}/admin/stats`, {
       headers: this.getAuthHeaders(),

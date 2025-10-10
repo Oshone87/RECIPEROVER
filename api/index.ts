@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   isVerified: { type: Boolean, default: false },
+  isDisabled: { type: Boolean, default: false },
   role: { type: String, enum: ["user", "admin"], default: "user" },
   kycStatus: {
     type: String,
@@ -362,6 +363,7 @@ export default async function handler(req: any, res: any) {
             _id: u._id,
             email: u.email,
             isVerified: u.isVerified,
+            isDisabled: (u as any).isDisabled || false,
             kycStatus: u.kycStatus,
             createdAt: u.createdAt,
           })),
@@ -631,6 +633,43 @@ export default async function handler(req: any, res: any) {
           return res.status(400).json({ message: "Missing required fields" });
         }
 
+        // Validate user not disabled
+        const dbUser = await User.findById(decoded.userId);
+        if (!dbUser) return res.status(404).json({ message: "User not found" });
+        if ((dbUser as any).isDisabled) {
+          return res.status(403).json({ message: "User account disabled" });
+        }
+
+        // Check and deduct from asset balance
+        const bal = await AssetBalance.findOne({ userId: decoded.userId });
+        if (!bal) {
+          return res.status(400).json({ message: "No balances found" });
+        }
+        const fieldMap: Record<string, keyof typeof bal> = {
+          BTC: "bitcoin" as any,
+          ETH: "ethereum" as any,
+          SOL: "solana" as any,
+          bitcoin: "bitcoin" as any,
+          ethereum: "ethereum" as any,
+          solana: "solana" as any,
+        };
+        const field = (fieldMap as any)[asset] || null;
+        if (!field) {
+          return res.status(400).json({ message: "Invalid asset" });
+        }
+        // @ts-ignore dynamic index
+        const available = Number(bal[field] || 0);
+        if (available < amount) {
+          return res
+            .status(400)
+            .json({ message: "Insufficient asset balance" });
+        }
+        // Deduct the investment amount from the asset and total balance
+        // @ts-ignore dynamic index
+        bal[field] = available - amount;
+        bal.totalBalance = Math.max(0, Number(bal.totalBalance || 0) - amount);
+        await bal.save();
+
         const inv = new Investment({
           userId: decoded.userId,
           tier,
@@ -641,12 +680,63 @@ export default async function handler(req: any, res: any) {
         });
         await inv.save();
 
-        // Optionally adjust balances here (skipped for now)
-
         return res.status(201).json({
           message: "Investment created",
           investment: inv,
         });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Admin: disable/enable a user
+    if (req.url?.startsWith("/api/admin/users/") && req.method === "PUT") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const parts = req.url.split("/");
+        const userId = parts[parts.length - 1];
+        const { disabled } = req.body || {};
+        await User.findByIdAndUpdate(userId, { isDisabled: !!disabled });
+        return res.status(200).json({ message: "User updated" });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Admin: delete a user (and related data)
+    if (req.url === "/api/admin/users" && req.method === "DELETE") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const { userId } = req.body || {};
+        if (!userId)
+          return res.status(400).json({ message: "userId required" });
+        await Promise.all([
+          User.findByIdAndDelete(userId),
+          AssetBalance.deleteMany({ userId }),
+          Investment.deleteMany({ userId }),
+          DepositRequest.deleteMany({ userId }),
+          WithdrawalRequest.deleteMany({ userId }),
+          KYCRequest.deleteMany({ userId }),
+        ]);
+        return res.status(200).json({ message: "User deleted" });
       } catch (e) {
         return res.status(401).json({ message: "Invalid token" });
       }
@@ -972,6 +1062,43 @@ export default async function handler(req: any, res: any) {
             status: r.status,
             submissionDate: r.submittedAt,
             transactionHash: r.transactionHash,
+          })),
+        });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Admin: Get Active Investments
+    if (req.url?.startsWith("/api/admin/investments") && req.method === "GET") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        // Default: active only; allow query ?all=1 to include all statuses
+        const urlObj = new URL(`http://localhost${req.url}`);
+        const includeAll = urlObj.searchParams.get("all") === "1";
+        const filter = includeAll ? {} : { status: "active" };
+        const list = await Investment.find(filter)
+          .populate("userId", "email")
+          .sort({ createdAt: -1 });
+        return res.status(200).json({
+          investments: list.map((inv: any) => ({
+            _id: inv._id,
+            userId: inv.userId, // populated with { email }
+            tier: inv.tier,
+            asset: inv.asset,
+            amount: inv.amount,
+            period: inv.period,
+            status: inv.status,
+            createdAt: inv.createdAt,
           })),
         });
       } catch (e) {

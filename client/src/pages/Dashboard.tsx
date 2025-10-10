@@ -129,9 +129,9 @@ export default function Dashboard() {
     );
   }
 
-  // Use real balances instead of mock data
-  const totalBalance = Number(realBalances?.totalBalance ?? 0);
-  const availableBalance = Number(realBalances?.totalBalance ?? 0);
+  // Use computed totals from InvestmentContext for display
+  const totalBalance = Number(balance ?? 0);
+  const availableBalance = Number(getAvailableBalance() ?? 0);
 
   return (
     <div className="min-h-screen flex flex-col">

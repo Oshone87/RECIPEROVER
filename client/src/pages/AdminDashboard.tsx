@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Shield,
   Users,
   Download,
@@ -24,6 +31,7 @@ interface DatabaseUser {
   _id: string;
   email: string;
   isVerified: boolean;
+  isDisabled?: boolean;
   kycStatus: string;
   createdAt: string;
 }
@@ -80,6 +88,27 @@ export default function AdminDashboard() {
   const [withdrawalRequests, setWithdrawalRequests] = useState<
     WithdrawalRequest[]
   >([]);
+  const [activeInvestments, setActiveInvestments] = useState<any[]>([]);
+  // Users tab state
+  const [usersFilter, setUsersFilter] = useState<"all" | "verified">("all");
+  const [userSearch, setUserSearch] = useState("");
+  const [userPage, setUserPage] = useState(1);
+  const pageSize = 10;
+  const filteredUsersAll = (users || [])
+    .filter((u) => (usersFilter === "verified" ? u.isVerified === true : true))
+    .filter((u) =>
+      userSearch
+        ? u.email.toLowerCase().includes(userSearch.toLowerCase())
+        : true
+    );
+  const totalUserPages = Math.max(
+    1,
+    Math.ceil(filteredUsersAll.length / pageSize)
+  );
+  const pagedUsers = filteredUsersAll.slice(
+    (userPage - 1) * pageSize,
+    userPage * pageSize
+  );
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -128,12 +157,14 @@ export default function AdminDashboard() {
         kycResponse,
         depositsResponse,
         withdrawalsResponse,
+        activeInvResponse,
       ] = await Promise.all([
         apiClient.getAllUsers(),
         apiClient.getPlatformStats(),
         apiClient.getKYCRequests(),
         apiClient.getDepositRequests(),
         apiClient.getWithdrawalRequests(),
+        apiClient.getAllInvestments(),
       ]);
 
       setUsers(usersResponse.users || []);
@@ -151,6 +182,7 @@ export default function AdminDashboard() {
       setKycRequests(kycResponse.requests || []);
       setDepositRequests(depositsResponse.requests || []);
       setWithdrawalRequests(withdrawalsResponse.requests || []);
+      setActiveInvestments(activeInvResponse.investments || []);
     } catch (error) {
       console.error("Failed to fetch admin data:", error);
       toast({
@@ -430,11 +462,293 @@ export default function AdminDashboard() {
 
         {/* Tabs for different sections */}
         <Tabs defaultValue="kyc" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="kyc">KYC Requests</TabsTrigger>
             <TabsTrigger value="deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
+            <TabsTrigger value="investments">Investments</TabsTrigger>
           </TabsList>
+
+          {/* Users Tab */}
+          <TabsContent value="users">
+            <Card>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4 flex-col sm:flex-row gap-3">
+                  <h2 className="text-xl font-bold">Users</h2>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <input
+                      type="text"
+                      placeholder="Search by email..."
+                      value={userSearch}
+                      onChange={(e) => {
+                        setUserSearch(e.target.value);
+                        setUserPage(1);
+                      }}
+                      className="border rounded px-3 py-2 text-sm w-full sm:w-[220px]"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      Filter
+                    </span>
+                    <Select
+                      onValueChange={(val) => {
+                        // set simple local state via URL hash or component state
+                        // We'll store filter in a data attribute on the container using state
+                        setUsersFilter(val as "all" | "verified");
+                        setUserPage(1);
+                      }}
+                      defaultValue="all"
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="All users" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All users</SelectItem>
+                        <SelectItem value="verified">Verified only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4">Email</th>
+                        <th className="text-left py-3 px-4">Verified</th>
+                        <th className="text-left py-3 px-4">Status</th>
+                        <th className="text-left py-3 px-4">KYC Status</th>
+                        <th className="text-left py-3 px-4">Joined</th>
+                        <th className="text-left py-3 px-4">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedUsers.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="py-8 text-center text-muted-foreground"
+                          >
+                            No users found
+                          </td>
+                        </tr>
+                      ) : (
+                        pagedUsers
+                          .slice()
+                          .sort(
+                            (a, b) =>
+                              new Date(b.createdAt).getTime() -
+                              new Date(a.createdAt).getTime()
+                          )
+                          .map((u) => (
+                            <tr
+                              key={u._id}
+                              className="border-b hover:bg-muted/50"
+                            >
+                              <td className="py-3 px-4">
+                                <span className="font-medium">{u.email}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge
+                                  variant={
+                                    u.isVerified ? "default" : "secondary"
+                                  }
+                                >
+                                  {u.isVerified ? "Yes" : "No"}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge
+                                  variant={
+                                    u.isDisabled ? "destructive" : "secondary"
+                                  }
+                                >
+                                  {u.isDisabled ? "Disabled" : "Active"}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge
+                                  variant={
+                                    u.kycStatus === "approved"
+                                      ? "default"
+                                      : u.kycStatus === "pending"
+                                      ? "secondary"
+                                      : "destructive"
+                                  }
+                                >
+                                  {u.kycStatus || "none"}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4">
+                                {new Date(u.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(u.email);
+                                      toast({ title: "User email copied" });
+                                    }}
+                                  >
+                                    View
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={
+                                      u.isDisabled ? "default" : "destructive"
+                                    }
+                                    onClick={async () => {
+                                      try {
+                                        await apiClient.updateUserDisabled(
+                                          u._id,
+                                          !u.isDisabled
+                                        );
+                                        toast({
+                                          title: u.isDisabled
+                                            ? "User enabled"
+                                            : "User disabled",
+                                        });
+                                        fetchAdminData();
+                                      } catch (e) {
+                                        toast({
+                                          title: "Action failed",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    {u.isDisabled ? "Enable" : "Disable"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={async () => {
+                                      if (
+                                        confirm(
+                                          `Delete user ${u.email}? This cannot be undone.`
+                                        )
+                                      ) {
+                                        try {
+                                          await apiClient.deleteUser(u._id);
+                                          toast({ title: "User deleted" });
+                                          fetchAdminData();
+                                        } catch (e) {
+                                          toast({
+                                            title: "Delete failed",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-sm text-muted-foreground">
+                    Page {userPage} of {totalUserPages} •{" "}
+                    {filteredUsersAll.length} users
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={userPage <= 1}
+                      onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={userPage >= totalUserPages}
+                      onClick={() =>
+                        setUserPage((p) => Math.min(totalUserPages, p + 1))
+                      }
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+          {/* Investments Tab */}
+          <TabsContent value="investments">
+            <Card>
+              <div className="p-6">
+                <h2 className="text-xl font-bold mb-4">Active Investments</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4">User</th>
+                        <th className="text-left py-3 px-4">Tier</th>
+                        <th className="text-left py-3 px-4">Asset</th>
+                        <th className="text-left py-3 px-4">Amount</th>
+                        <th className="text-left py-3 px-4">Period</th>
+                        <th className="text-left py-3 px-4">Status</th>
+                        <th className="text-left py-3 px-4">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeInvestments.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="py-8 text-center text-muted-foreground"
+                          >
+                            No active investments found
+                          </td>
+                        </tr>
+                      ) : (
+                        activeInvestments.map((inv: any) => (
+                          <tr
+                            key={inv._id}
+                            className="border-b hover:bg-muted/50"
+                          >
+                            <td className="py-3 px-4">
+                              {inv.userId?.email || "Unknown User"}
+                            </td>
+                            <td className="py-3 px-4">{inv.tier}</td>
+                            <td className="py-3 px-4">{inv.asset}</td>
+                            <td className="py-3 px-4 font-mono">
+                              ${inv.amount?.toLocaleString()}
+                            </td>
+                            <td className="py-3 px-4">{inv.period} days</td>
+                            <td className="py-3 px-4">
+                              <Badge
+                                variant={
+                                  inv.status === "active"
+                                    ? "secondary"
+                                    : inv.status === "completed"
+                                    ? "default"
+                                    : "destructive"
+                                }
+                              >
+                                {inv.status}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              {new Date(inv.createdAt).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
 
           {/* KYC Tab */}
           <TabsContent value="kyc">

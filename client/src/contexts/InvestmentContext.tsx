@@ -111,7 +111,8 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
   };
 
   const getAvailableBalance = (): number => {
-    return balance;
+    // Available wallet balance only reflects liquid funds (not invested principal)
+    return Object.values(assetBalances).reduce((sum, v) => sum + v, 0);
   };
 
   const getAssetBalance = (asset: string): number => {
@@ -145,29 +146,25 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
         apiClient.getInvestments(),
       ]);
 
-      // Update balances
+      // Update balances (available wallet funds)
+      let mappedBalances: AssetBalance = { BTC: 0, ETH: 0, SOL: 0 };
       if (balancesResponse.balances) {
         const backendBalances = balancesResponse.balances;
 
         // Map backend keys to frontend keys
-        const mappedBalances = {
+        mappedBalances = {
           BTC: backendBalances.bitcoin || 0,
           ETH: backendBalances.ethereum || 0,
           SOL: backendBalances.solana || 0,
         };
 
         setAssetBalances(mappedBalances);
-
-        // Use total from backend or calculate it
-        const totalBalance =
-          backendBalances.totalBalance ||
-          mappedBalances.BTC + mappedBalances.ETH + mappedBalances.SOL;
-        setBalance(totalBalance);
       }
 
       // Update investments - map backend minimal investment into UI model
+      let mappedInvs: Investment[] = [];
       if (investmentsResponse.investments) {
-        const mappedInvs = investmentsResponse.investments.map((inv: any) => {
+        mappedInvs = investmentsResponse.investments.map((inv: any) => {
           const startDate = inv.createdAt
             ? new Date(inv.createdAt)
             : new Date();
@@ -282,6 +279,17 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
           )
       );
+
+      // Compute displayed total balance = available wallet + invested principal + accrued earnings
+      const available = Object.values(mappedBalances).reduce(
+        (sum, v) => sum + v,
+        0
+      );
+      const activePrincipal = mappedInvs
+        .filter((i) => i.status === "active")
+        .reduce((sum, i) => sum + i.amount, 0);
+      const accrued = mappedInvs.reduce((sum, i) => sum + i.earned, 0);
+      setBalance(available + activePrincipal + accrued);
     } catch (error) {
       console.error("Failed to refresh data:", error);
     } finally {
