@@ -516,13 +516,76 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // Get balance transactions endpoint (stub)
+    // Get balance transactions endpoint (user's deposits and withdrawals)
     if (req.url === "/api/balances/transactions" && req.method === "GET") {
-      // For now, return an empty transactions list.
-      // You can expand this to real transaction history later.
-      return res.status(200).json({
-        transactions: [],
-      });
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId === "admin") {
+          return res.status(200).json({ transactions: [] });
+        }
+        const [deposits, withdrawals] = await Promise.all([
+          DepositRequest.find({ userId: decoded.userId }).sort({
+            submittedAt: -1,
+          }),
+          WithdrawalRequest.find({ userId: decoded.userId }).sort({
+            submittedAt: -1,
+          }),
+        ]);
+
+        const mapAssetCode = (asset: string) => {
+          const map: Record<string, string> = {
+            bitcoin: "BTC",
+            ethereum: "ETH",
+            solana: "SOL",
+            BTC: "BTC",
+            ETH: "ETH",
+            SOL: "SOL",
+          };
+          return map[asset] || asset?.toUpperCase?.() || asset;
+        };
+
+        const depositTx = deposits.map((d: any) => ({
+          id: `dep_${d._id}`,
+          date: (d.processedAt || d.submittedAt || new Date()).toISOString(),
+          type: "deposit",
+          asset: mapAssetCode(d.asset),
+          amount: d.amount,
+          status:
+            d.status === "verified"
+              ? "completed"
+              : d.status === "pending"
+              ? "pending"
+              : "rejected",
+        }));
+
+        const withdrawalTx = withdrawals.map((w: any) => ({
+          id: `wd_${w._id}`,
+          date: (w.processedAt || w.submittedAt || new Date()).toISOString(),
+          type: "withdrawal",
+          asset: mapAssetCode(w.asset),
+          amount: w.amount,
+          status:
+            w.status === "completed"
+              ? "completed"
+              : w.status === "pending" || w.status === "approved"
+              ? "pending"
+              : "rejected",
+        }));
+
+        const transactions = [...depositTx, ...withdrawalTx].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+
+        return res.status(200).json({ transactions });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
     }
 
     // Get investments for current user

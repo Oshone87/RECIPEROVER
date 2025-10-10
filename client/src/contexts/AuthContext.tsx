@@ -67,7 +67,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshUser = async () => {
     try {
       const userData = await apiClient.getCurrentUser();
-      setUser(userData.user);
+      // Normalize shape to our User interface
+      const u = userData.user || {};
+      setUser({
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        kycStatus: u.kycStatus,
+        isVerified: !!u.isVerified,
+        isAdmin: u.role === "admin",
+        hasCompletedKYC: u.kycStatus === "approved",
+        balance: { USDT: 0, BTC: 0, ETH: 0, BNB: 0 },
+      });
     } catch (error) {
       console.error("Failed to refresh user:", error);
       // If token is invalid, clear it
@@ -96,29 +107,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setLoading(true);
       const response = await apiClient.login(email, password);
+      const u = response.user;
+      const mapped = {
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        kycStatus: u.kycStatus,
+        isVerified: !!u.isVerified,
+        isAdmin: u.role === "admin",
+        hasCompletedKYC: u.kycStatus === "approved",
+        balance: { USDT: 0, BTC: 0, ETH: 0, BNB: 0 },
+      } as User;
 
-      // Transform backend user data to match frontend interface
-      const userData = {
-        id: response.user.id,
-        email: response.user.email,
-        role: response.user.role,
-        kycStatus: response.user.kycStatus,
-        isVerified: response.user.isVerified,
-        isAdmin: response.user.role === "admin",
-        hasCompletedKYC: response.user.kycStatus === "approved",
-        balance: {
-          USDT: 0,
-          BTC: 0,
-          ETH: 0,
-          BNB: 0,
-        },
-      };
-
-      setUser(userData);
+      setUser(mapped);
 
       // Navigate based on user role
       setTimeout(() => {
-        if (userData.isAdmin) {
+        if (mapped.isAdmin) {
           setLocation("/admin-dashboard");
         } else {
           setLocation("/dashboard");

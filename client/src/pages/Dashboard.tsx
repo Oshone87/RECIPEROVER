@@ -96,22 +96,13 @@ export default function Dashboard() {
     }
   };
 
-  // Get user's KYC status
-  const getUserKycStatus = () => {
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
-    const currentUser = registeredUsers.find(
-      (u: any) => u.email === user?.email
-    );
-    return {
-      isVerified: currentUser?.isVerified || false,
-      kycStatus: currentUser?.kycStatus || "not_submitted",
-      kycSubmitted: currentUser?.kycSubmitted || false,
-    };
-  };
-
-  const kycInfo = getUserKycStatus();
+  // Use real KYC status from auth context
+  const kycInfo = {
+    isVerified: !!user?.isVerified,
+    kycStatus: user?.kycStatus || "not_submitted",
+    kycSubmitted:
+      (user?.kycStatus && user.kycStatus !== "not_submitted") || false,
+  } as const;
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -183,6 +174,25 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+              {/* KYC Status Badge */}
+              <div className="flex items-center justify-center sm:justify-start">
+                <Badge
+                  variant={
+                    kycInfo.isVerified
+                      ? "default"
+                      : kycInfo.kycStatus === "pending"
+                      ? "secondary"
+                      : "destructive"
+                  }
+                  className="uppercase"
+                >
+                  {kycInfo.isVerified
+                    ? "Verified"
+                    : kycInfo.kycStatus === "pending"
+                    ? "KYC Pending"
+                    : "Not Verified"}
+                </Badge>
+              </div>
               <Button
                 size="lg"
                 variant="default"
@@ -345,7 +355,16 @@ export default function Dashboard() {
       </div>
 
       <Footer />
-      <InvestmentModal open={modalOpen} onOpenChange={setModalOpen} />
+      <InvestmentModal
+        open={modalOpen}
+        onOpenChange={(open) => {
+          setModalOpen(open);
+          if (!open) {
+            // refresh on close in case an investment was created
+            fetchUserData();
+          }
+        }}
+      />
       <WithdrawalModal
         open={withdrawalModalOpen}
         onOpenChange={setWithdrawalModalOpen}

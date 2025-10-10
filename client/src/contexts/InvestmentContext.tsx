@@ -165,12 +165,65 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
         setBalance(totalBalance);
       }
 
-      // Update investments
+      // Update investments - map backend minimal investment into UI model
       if (investmentsResponse.investments) {
-        setInvestments(investmentsResponse.investments);
+        const mappedInvs = investmentsResponse.investments.map((inv: any) => {
+          const startDate = inv.createdAt
+            ? new Date(inv.createdAt)
+            : new Date();
+          const endDate = inv.period
+            ? new Date(startDate.getTime() + inv.period * 24 * 60 * 60 * 1000)
+            : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          const now = new Date();
+          const totalDays = Math.max(
+            1,
+            Math.round(
+              (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+            )
+          );
+          const elapsedDays = Math.min(
+            totalDays,
+            Math.max(
+              0,
+              Math.round(
+                (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+              )
+            )
+          );
+          const progress = Math.min(100, (elapsedDays / totalDays) * 100);
+
+          // If backend doesn't store apr %, approximate from tier label if available, else default 24
+          const aprFromTier = (tier: string) => {
+            const t = (tier || "").toLowerCase();
+            if (t.includes("platinum")) return 36;
+            if (t.includes("gold")) return 30;
+            if (t.includes("silver")) return 24;
+            return 24;
+          };
+          const apr = Number(inv.apr || aprFromTier(inv.tier));
+
+          // Naive earnings estimate (APR linear over period)
+          const dailyRate = apr / 365 / 100;
+          const earned = Number((inv.amount || 0) * dailyRate * elapsedDays);
+
+          return {
+            id: inv._id,
+            tier: inv.tier,
+            asset: inv.asset,
+            amount: inv.amount,
+            apr,
+            period: inv.period,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            earned,
+            status: inv.status,
+            progress,
+          } as Investment;
+        });
+        setInvestments(mappedInvs);
       }
 
-      // Generate transactions from investments and balance operations
+      // Generate transactions from investments (deposits/withdrawals from /balances/transactions)
       const allTransactions: Transaction[] = [];
 
       // Add investment transactions
@@ -186,10 +239,48 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
         });
       });
 
+      // Merge in backend transactions for deposits/withdrawals
+      try {
+        const txResp = await apiClient.getTransactions();
+        const backendTx: Transaction[] = Array.isArray(txResp?.transactions)
+          ? txResp.transactions.map((t: any) => ({
+              id: t.id,
+              date: t.date,
+              type:
+                (t.type || "").toLowerCase() === "deposit"
+                  ? "Deposit"
+                  : (t.type || "").toLowerCase() === "withdrawal"
+                  ? "Withdrawal"
+                  : "Investment",
+              asset: t.asset,
+              amount: Number(t.amount || 0),
+              status:
+                (t.status || "").toLowerCase() === "completed"
+                  ? "Completed"
+                  : (t.status || "").toLowerCase() === "pending"
+                  ? "Pending"
+                  : "Failed",
+              description:
+                (t.type || "").toLowerCase() === "deposit"
+                  ? `Deposit ${t.asset}`
+                  : (t.type || "").toLowerCase() === "withdrawal"
+                  ? `Withdrawal ${t.asset}`
+                  : `Investment ${t.asset}`,
+            }))
+          : [];
+        allTransactions.push(...backendTx);
+      } catch (e) {
+        // ignore
+      }
+
       setTransactions(
-        allTransactions.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        )
+        allTransactions
+          .filter(
+            (x) => x && x.date && !Number.isNaN(new Date(x.date).getTime())
+          )
+          .sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          )
       );
     } catch (error) {
       console.error("Failed to refresh data:", error);
