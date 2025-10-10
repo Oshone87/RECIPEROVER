@@ -233,9 +233,10 @@ export function AdminProvider({ children }: AdminProviderProps) {
     await getAllUsers();
   };
 
-  useEffect(() => {
-    refreshData();
-  }, []);
+  // Remove automatic data fetching on mount - let admin pages call refreshData when needed
+  // useEffect(() => {
+  //   refreshData();
+  // }, []);
 
   const value = {
     users,

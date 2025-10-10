@@ -11,69 +11,56 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
-// CORS configuration for production and development
-const corsOptions = {
-  origin: function (origin: string | undefined, callback: Function) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+// Simple and permissive CORS for production
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-    const allowedOrigins = [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "http://localhost:5176",
-      "http://localhost:5177",
-      "http://localhost:5178",
-      "http://localhost:5179",
-      "http://localhost:5180",
-      "http://localhost:5181",
-      "http://localhost:5182",
-      "http://localhost:5183",
-      "http://localhost:5184",
-      "http://localhost:5185",
-      "http://localhost:5186",
-      "http://localhost:5187",
-      "https://crypto-invest-ip9u.vercel.app", // Your frontend domain
-      "https://reciperover.vercel.app", // Alternative frontend domain
-      "https://recipe-rover.vercel.app", // Another possible domain
-    ];
+  // Allow specific origins or any vercel.app subdomain
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://localhost:5177",
+    "http://localhost:5178",
+    "http://localhost:5179",
+    "http://localhost:5180",
+    "http://localhost:5181",
+    "http://localhost:5182",
+    "http://localhost:5183",
+    "http://localhost:5184",
+    "http://localhost:5185",
+    "http://localhost:5186",
+    "http://localhost:5187",
+    "https://crypto-invest-ip9u.vercel.app",
+    "https://reciperover.vercel.app",
+    "https://recipe-rover.vercel.app",
+  ];
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log(`CORS blocked origin: ${origin}`);
-      // In production, allow any vercel.app subdomain for flexibility
-      if (
-        process.env.NODE_ENV === "production" &&
-        origin?.includes(".vercel.app")
-      ) {
-        console.log(`Allowing vercel.app domain: ${origin}`);
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  preflightContinue: false,
-  optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
-};
+  if (
+    !origin ||
+    allowedOrigins.includes(origin) ||
+    (origin && origin.includes(".vercel.app"))
+  ) {
+    res.header("Access-Control-Allow-Origin", origin || "*");
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    );
+  }
 
-app.use(cors(corsOptions));
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+    return;
+  }
 
-// Handle preflight requests explicitly
-app.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", req.headers.origin);
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With"
-  );
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.sendStatus(200);
+  next();
 });
 
 // Rate limiting
