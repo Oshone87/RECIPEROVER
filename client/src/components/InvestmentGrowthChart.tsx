@@ -41,26 +41,34 @@ export function InvestmentGrowthChart() {
     }
 
     const startDate = new Date(investment.startDate);
-    const currentDate = new Date();
+    const endDate = new Date(investment.endDate || startDate);
+    const today = new Date();
+    const lastDate = today < endDate ? today : endDate;
     const data: DailyGrowth[] = [];
 
-    const dailyRate = (investment.apr || 0) / 365 / 100;
-    let currentAmount = investment.amount || 0;
+    // Linear, non-compounding daily earnings to match the slider estimate
+    const dailyRate = (investment.apr || 0) / 365; // no /100
+    const principal = investment.amount || 0;
 
     for (
       let d = new Date(startDate);
-      d <= currentDate;
+      d <= lastDate;
       d.setDate(d.getDate() + 1)
     ) {
-      const dailyEarning = currentAmount * dailyRate;
-      currentAmount += dailyEarning;
+      // Earnings grow linearly by principal * dailyRate each day
+      const daysElapsed = Math.max(
+        0,
+        Math.round((d.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+      );
+      const earned = principal * dailyRate * daysElapsed;
+      const dailyEarning = principal * dailyRate;
+      const amount = principal + earned;
 
       data.push({
         date: d.toISOString().split("T")[0],
-        amount: currentAmount,
+        amount,
         dailyEarning,
-        percentage:
-          ((currentAmount - investment.amount) / investment.amount) * 100,
+        percentage: (earned / principal) * 100,
       });
     }
 
@@ -476,7 +484,7 @@ export function InvestmentGrowthChart() {
                       <div className="text-center p-3 bg-muted/50 rounded-lg">
                         <p className="text-muted-foreground">Daily Rate</p>
                         <p className="font-semibold">
-                          {(investment.apr / 365).toFixed(3)}%
+                          {(investment.apr / 365).toFixed(2)}%
                         </p>
                       </div>
                       <div className="text-center p-3 bg-muted/50 rounded-lg">

@@ -199,8 +199,10 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
           };
           const apr = Number(inv.apr || aprFromTier(inv.tier));
 
-          // Naive earnings estimate (APR linear over period)
-          const dailyRate = apr / 365 / 100;
+          // Earnings estimate aligned with Investment slider (linear, no compounding)
+          // dailyRate represents fraction-of-principal earned per day, using APR units consistent with slider
+          // Example: APR 24.0 -> dailyRate = 24/365 (~0.06575 => 6.575%)
+          const dailyRate = apr / 365; // no /100 to match slider math
           const earned = Number((inv.amount || 0) * dailyRate * elapsedDays);
 
           return {
