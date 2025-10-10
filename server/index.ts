@@ -8,12 +8,12 @@ import { connectDatabase } from "./config/database";
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
-
-// Simple and permissive CORS for production
+// CORS handling MUST come before other middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+
+  // Log the origin for debugging
+  console.log(`🌐 Request from origin: ${origin}`);
 
   // Allow specific origins or any vercel.app subdomain
   const allowedOrigins = [
@@ -38,6 +38,7 @@ app.use((req, res, next) => {
     "https://recipe-rover.vercel.app",
   ];
 
+  // Always set CORS headers for allowed origins
   if (
     !origin ||
     allowedOrigins.includes(origin) ||
@@ -53,15 +54,27 @@ app.use((req, res, next) => {
       "Access-Control-Allow-Headers",
       "Origin, X-Requested-With, Content-Type, Accept, Authorization"
     );
+    console.log(`✅ CORS allowed for origin: ${origin}`);
+  } else {
+    console.log(`❌ CORS blocked for origin: ${origin}`);
   }
 
+  // Handle preflight requests
   if (req.method === "OPTIONS") {
+    console.log(`🔧 Handling OPTIONS preflight request`);
     res.sendStatus(200);
     return;
   }
 
   next();
 });
+
+// Security middleware (after CORS)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 // Rate limiting
 const limiter = rateLimit({
