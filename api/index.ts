@@ -186,8 +186,17 @@ export default async function handler(req: any, res: any) {
     await connectDatabase();
 
     // Platform wallets and helpers
+    const normalizeAssetCode = (asset: string): "BTC" | "ETH" | "SOL" => {
+      const raw = (asset || "").toString().trim().toLowerCase();
+      if (raw.startsWith("btc") || raw.includes("bitcoin")) return "BTC";
+      if (raw.startsWith("eth") || raw.includes("ethereum")) return "ETH";
+      if (raw.startsWith("sol") || raw.includes("solana")) return "SOL";
+      // default safe fallback
+      return "BTC";
+    };
+
     const getPlatformWallet = (asset: string): string => {
-      const a = (asset || "").toUpperCase();
+      const a = normalizeAssetCode(asset);
       const envMap: Record<string, string | undefined> = {
         BTC: process.env.PLATFORM_WALLET_BTC,
         ETH: process.env.PLATFORM_WALLET_ETH,
@@ -221,7 +230,7 @@ export default async function handler(req: any, res: any) {
     };
     const generateSolAddress = () => randomBase58(44);
     const generateRandomAddressForAsset = (asset: string) => {
-      const a = (asset || "").toUpperCase();
+      const a = normalizeAssetCode(asset);
       if (a === "ETH") return generateEthAddress();
       if (a === "SOL") return generateSolAddress();
       return generateBtcAddress();

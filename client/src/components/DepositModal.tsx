@@ -18,13 +18,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { SiBitcoin, SiEthereum } from "react-icons/si";
 import { TbCurrencySolana } from "react-icons/tb";
-import {
-  DollarSign,
-  Copy,
-  CheckCircle,
-  AlertTriangle,
-  Upload,
-} from "lucide-react";
+import { Copy, CheckCircle, AlertTriangle, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/apiClient";
@@ -64,7 +58,6 @@ export function DepositModal({
   const [step, setStep] = useState(1);
   const [asset, setAsset] = useState("BTC");
   const [amount, setAmount] = useState("");
-  const [transactionHash, setTransactionHash] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
   const [walletCopied, setWalletCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,7 +105,6 @@ export function DepositModal({
       await apiClient.submitDeposit({
         amount: numAmount,
         asset,
-        transactionHash: transactionHash || undefined,
         senderAddress: senderAddress || undefined,
       });
 
@@ -124,7 +116,6 @@ export function DepositModal({
       onOpenChange(false);
       setStep(1);
       setAmount("");
-      setTransactionHash("");
       setSenderAddress("");
       setWalletCopied(false);
 
@@ -146,7 +137,7 @@ export function DepositModal({
   const resetModal = () => {
     setStep(1);
     setAmount("");
-    setTransactionHash("");
+    setSenderAddress("");
     setWalletCopied(false);
     setIsSubmitting(false);
   };
@@ -264,21 +255,6 @@ export function DepositModal({
               <h3 className="font-semibold">Confirm Your Deposit</h3>
 
               <div className="space-y-2">
-                <Label htmlFor="transaction-hash">
-                  Transaction Hash (Optional)
-                </Label>
-                <Input
-                  id="transaction-hash"
-                  value={transactionHash}
-                  onChange={(e) => setTransactionHash(e.target.value)}
-                  placeholder="Enter transaction hash if available"
-                />
-                <p className="text-sm text-muted-foreground">
-                  This helps our admin verify your payment faster
-                </p>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="sender-address">
                   Your Sending Wallet Address
                 </Label>
@@ -333,7 +309,6 @@ export function DepositModal({
                     <li>
                       • You can only make investments after deposit approval
                     </li>
-                    <li>• Keep your transaction hash for faster processing</li>
                   </ul>
                 </div>
               </div>
