@@ -32,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SiBitcoin, SiEthereum } from "react-icons/si";
 import { TbCurrencySolana } from "react-icons/tb";
 import { apiClient } from "@/lib/apiClient";
+import { TransactionDetailsModal } from "@/components/TransactionDetailsModal";
 
 export default function Dashboard() {
   const { isAuthenticated, user } = useAuth();
@@ -51,6 +52,8 @@ export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedTx, setSelectedTx] = useState<any | null>(null);
 
   // Real user data from API
   const [realBalances, setRealBalances] = useState({
@@ -327,6 +330,19 @@ export default function Dashboard() {
                           >
                             {tx.status}
                           </Badge>
+                          <div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="px-2 h-7 mt-1 text-xs"
+                              onClick={() => {
+                                setSelectedTx(tx);
+                                setDetailsOpen(true);
+                              }}
+                            >
+                              View
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -369,6 +385,11 @@ export default function Dashboard() {
         open={depositModalOpen}
         onOpenChange={setDepositModalOpen}
         onSuccess={fetchUserData}
+      />
+      <TransactionDetailsModal
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        transaction={selectedTx}
       />
     </div>
   );

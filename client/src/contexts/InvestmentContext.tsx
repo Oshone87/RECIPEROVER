@@ -197,7 +197,7 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
             if (t.includes("silver")) return 24;
             return 24;
           };
-          const apr = Number(inv.apr || aprFromTier(inv.tier));
+          const apr = Number(inv.apr ?? aprFromTier(inv.tier));
 
           // Earnings estimate aligned with Investment slider (linear, no compounding)
           // dailyRate represents fraction-of-principal earned per day, using APR units consistent with slider
@@ -292,7 +292,10 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
       const activePrincipal = mappedInvs
         .filter((i) => i.status === "active")
         .reduce((sum, i) => sum + i.amount, 0);
-      const accrued = mappedInvs.reduce((sum, i) => sum + i.earned, 0);
+      // Only count earnings from active investments to avoid double-counting after maturity (matured funds are credited to wallet)
+      const accrued = mappedInvs
+        .filter((i) => i.status === "active")
+        .reduce((sum, i) => sum + i.earned, 0);
       setBalance(available + activePrincipal + accrued);
     } catch (error) {
       console.error("Failed to refresh data:", error);

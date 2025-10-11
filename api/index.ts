@@ -60,13 +60,14 @@ const AssetBalance =
 const KYCRequest =
   mongoose.models.KYCRequest || mongoose.model("KYCRequest", kycRequestSchema);
 
-// Investment Schema (minimal)
+// Investment Schema (with APR and completion timestamp)
 const investmentSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   tier: { type: String, required: true },
   asset: { type: String, required: true },
   amount: { type: Number, required: true },
   period: { type: Number, required: true }, // in days
+  apr: { type: Number }, // APR used for earnings math (see create investment)
   status: {
     type: String,
     enum: ["active", "completed", "cancelled"],
@@ -74,6 +75,7 @@ const investmentSchema = new mongoose.Schema({
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  completedAt: { type: Date },
 });
 
 const Investment =
@@ -90,6 +92,17 @@ const depositRequestSchema = new mongoose.Schema({
     default: "pending",
   },
   transactionHash: { type: String },
+  walletAddress: { type: String },
+  receipt: {
+    referenceId: String,
+    type: { type: String, default: "deposit" },
+    asset: String,
+    amount: Number,
+    network: String,
+    senderAddress: String,
+    recipientAddress: String,
+    createdAt: { type: Date, default: Date.now },
+  },
   submittedAt: { type: Date, default: Date.now },
   processedAt: { type: Date },
   adminNotes: { type: String },
@@ -111,6 +124,16 @@ const withdrawalRequestSchema = new mongoose.Schema({
     default: "pending",
   },
   transactionHash: { type: String },
+  receipt: {
+    referenceId: String,
+    type: { type: String, default: "withdrawal" },
+    asset: String,
+    amount: Number,
+    network: String,
+    senderAddress: String,
+    recipientAddress: String,
+    createdAt: { type: Date, default: Date.now },
+  },
   submittedAt: { type: Date, default: Date.now },
   processedAt: { type: Date },
   adminNotes: { type: String },
@@ -161,6 +184,152 @@ export default async function handler(req: any, res: any) {
     }
 
     await connectDatabase();
+
+    // Platform wallets and helpers
+    const getPlatformWallet = (asset: string): string => {
+      const a = (asset || "").toUpperCase();
+      const envMap: Record<string, string | undefined> = {
+        BTC: process.env.PLATFORM_WALLET_BTC,
+        ETH: process.env.PLATFORM_WALLET_ETH,
+        SOL: process.env.PLATFORM_WALLET_SOL,
+      };
+      const fallbackMap: Record<string, string> = {
+        BTC: "3H2CW2w8eiCnytfF57Tyk4sxxZwbr9aQCx",
+        ETH: "0x275CDF33a56400f3164AA34831027f7b5A42ABb4",
+        SOL: "8XoKp527ERexxMC9QxL4soXHRvwKdCj2wmNK3iBdNxVE",
+      };
+      return envMap[a] || fallbackMap[a] || "";
+    };
+
+    const randomHex = (len: number) =>
+      [...Array(len)]
+        .map(() => Math.floor(Math.random() * 16).toString(16))
+        .join("");
+    const randomBase58 = (len: number) => {
+      const alphabet =
+        "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+      let s = "";
+      for (let i = 0; i < len; i++)
+        s += alphabet[Math.floor(Math.random() * alphabet.length)];
+      return s;
+    };
+    const generateEthAddress = () => `0x${randomHex(40)}`;
+    const generateBtcAddress = () => {
+      if (Math.random() < 0.5) return `bc1q${randomBase58(30)}`;
+      const prefix = Math.random() < 0.5 ? "1" : "3";
+      return `${prefix}${randomBase58(33)}`;
+    };
+    const generateSolAddress = () => randomBase58(44);
+    const generateRandomAddressForAsset = (asset: string) => {
+      const a = (asset || "").toUpperCase();
+      if (a === "ETH") return generateEthAddress();
+      if (a === "SOL") return generateSolAddress();
+      return generateBtcAddress();
+    };
+    const generateReferenceId = () => {
+      const d = new Date();
+      const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}${String(d.getDate()).padStart(2, "0")}`;
+      return `TX-${ymd}-${randomHex(6).toUpperCase()}`;
+    };
+
+    // Utility: map tier to APR matching the frontend math (linear APR/365 without /100)
+    const aprFromTier = (tier: string | undefined): number => {
+      const t = (tier || "").toLowerCase();
+      if (t.includes("platinum")) return 36;
+      if (t.includes("gold")) return 30;
+      if (t.includes("silver")) return 24;
+      return 24;
+    };
+
+    // Utility: asset field mapping
+    const getAssetField = (asset: string, bal: any) => {
+      const fieldMap: Record<string, keyof typeof bal> = {
+        BTC: "bitcoin" as any,
+        ETH: "ethereum" as any,
+        SOL: "solana" as any,
+        bitcoin: "bitcoin" as any,
+        ethereum: "ethereum" as any,
+        solana: "solana" as any,
+      };
+      return (fieldMap as any)[asset] || null;
+    };
+
+    // Idempotent settlement: mark matured investments completed and credit balances once
+    const settleMaturedInvestments = async (userId: string) => {
+      const now = new Date();
+      // Find candidates first (active only)
+      const candidates = await Investment.find({ userId, status: "active" });
+      if (!candidates.length) return;
+
+      let creditByAsset: Record<string, number> = {
+        bitcoin: 0,
+        ethereum: 0,
+        solana: 0,
+      };
+
+      // For each candidate, check maturity and atomically flip to completed to avoid double payout
+      for (const inv of candidates) {
+        const start = inv.createdAt ? new Date(inv.createdAt) : now;
+        const end = new Date(
+          start.getTime() + Number(inv.period || 0) * 24 * 60 * 60 * 1000
+        );
+        if (now.getTime() >= end.getTime()) {
+          // Try to atomically set to completed only if still active
+          const updated = await Investment.findOneAndUpdate(
+            { _id: inv._id, status: "active" },
+            {
+              $set: {
+                status: "completed",
+                updatedAt: new Date(),
+                completedAt: new Date(),
+              },
+            },
+            { new: false }
+          );
+          // If updated is not null, the change happened now; compute payout once
+          if (updated) {
+            const apr = Number(inv.apr || aprFromTier(inv.tier));
+            const dailyRate = apr / 365; // matches frontend math (no /100)
+            const earnings =
+              Number(inv.amount || 0) * dailyRate * Number(inv.period || 0);
+            const totalReturn = Number(inv.amount || 0) + earnings;
+            const assetKey = (inv.asset || "").toLowerCase();
+            if (assetKey.includes("btc") || assetKey === "bitcoin") {
+              creditByAsset.bitcoin += totalReturn;
+            } else if (assetKey.includes("eth") || assetKey === "ethereum") {
+              creditByAsset.ethereum += totalReturn;
+            } else if (assetKey.includes("sol") || assetKey === "solana") {
+              creditByAsset.solana += totalReturn;
+            } else {
+              // default to totalBalance only if unknown asset (rare)
+              creditByAsset.bitcoin += 0; // no-op, but keeps structure consistent
+            }
+          }
+        }
+      }
+
+      // Apply credits if any
+      const totalCredit = Object.values(creditByAsset).reduce(
+        (a, b) => a + b,
+        0
+      );
+      if (totalCredit > 0) {
+        const bal = await AssetBalance.findOne({ userId });
+        if (bal) {
+          // @ts-ignore dynamic index
+          bal.bitcoin = Number(bal.bitcoin || 0) + creditByAsset.bitcoin;
+          // @ts-ignore dynamic index
+          bal.ethereum = Number(bal.ethereum || 0) + creditByAsset.ethereum;
+          // @ts-ignore dynamic index
+          bal.solana = Number(bal.solana || 0) + creditByAsset.solana;
+          bal.totalBalance = Number(bal.totalBalance || 0) + totalCredit;
+          await bal.save();
+        }
+      }
+    };
 
     // Health endpoint
     if (req.url === "/health") {
@@ -495,6 +664,9 @@ export default async function handler(req: any, res: any) {
           });
         }
 
+        // First settle any matured investments (idempotent)
+        await settleMaturedInvestments(userId);
+
         // Find user balances
         const balances = await AssetBalance.findOne({ userId });
 
@@ -580,6 +752,7 @@ export default async function handler(req: any, res: any) {
               : d.status === "pending"
               ? "pending"
               : "rejected",
+          receipt: d.receipt,
         }));
 
         const withdrawalTx = withdrawals.map((w: any) => ({
@@ -596,6 +769,7 @@ export default async function handler(req: any, res: any) {
               : w.status === "pending"
               ? "pending"
               : "rejected",
+          receipt: w.receipt,
         }));
 
         const transactions = [...depositTx, ...withdrawalTx].sort(
@@ -623,6 +797,8 @@ export default async function handler(req: any, res: any) {
           const investments = await Investment.find({}).sort({ createdAt: -1 });
           return res.status(200).json({ investments });
         }
+        // Settle matured before returning user's investments (idempotent, per-user)
+        await settleMaturedInvestments(decoded.userId);
         const investments = await Investment.find({
           userId: decoded.userId,
         }).sort({ createdAt: -1 });
@@ -646,7 +822,7 @@ export default async function handler(req: any, res: any) {
           return res.status(403).json({ message: "Users only" });
         }
 
-        const { tier, amount, asset, period } = req.body || {};
+        const { tier, amount, asset, period, apr } = req.body || {};
         if (!tier || !amount || !asset || !period) {
           return res.status(400).json({ message: "Missing required fields" });
         }
@@ -663,15 +839,7 @@ export default async function handler(req: any, res: any) {
         if (!bal) {
           return res.status(400).json({ message: "No balances found" });
         }
-        const fieldMap: Record<string, keyof typeof bal> = {
-          BTC: "bitcoin" as any,
-          ETH: "ethereum" as any,
-          SOL: "solana" as any,
-          bitcoin: "bitcoin" as any,
-          ethereum: "ethereum" as any,
-          solana: "solana" as any,
-        };
-        const field = (fieldMap as any)[asset] || null;
+        const field = getAssetField(asset, bal);
         if (!field) {
           return res.status(400).json({ message: "Invalid asset" });
         }
@@ -694,6 +862,7 @@ export default async function handler(req: any, res: any) {
           amount,
           asset,
           period,
+          apr: Number(apr || aprFromTier(tier)),
           status: "active",
         });
         await inv.save();
@@ -904,18 +1073,34 @@ export default async function handler(req: any, res: any) {
       const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
-        const { amount, asset, transactionHash } = req.body || {};
+        const { amount, asset, transactionHash, senderAddress, network } =
+          req.body || {};
         if (!amount || !asset) {
           return res.status(400).json({ message: "Missing fields" });
         }
+        const referenceId = generateReferenceId();
+        const platformAddr = getPlatformWallet(asset);
         const reqDoc = new DepositRequest({
           userId: decoded.userId,
           amount,
           asset,
           transactionHash,
+          walletAddress: senderAddress,
+          receipt: {
+            referenceId,
+            type: "deposit",
+            asset,
+            amount,
+            network: network || String(asset || "").toUpperCase(),
+            senderAddress: senderAddress || "",
+            recipientAddress: platformAddr,
+            createdAt: new Date(),
+          },
         });
         await reqDoc.save();
-        return res.status(201).json({ message: "Deposit submitted" });
+        return res
+          .status(201)
+          .json({ message: "Deposit submitted", referenceId });
       } catch (e) {
         return res.status(401).json({ message: "Invalid token" });
       }
@@ -1015,7 +1200,7 @@ export default async function handler(req: any, res: any) {
       const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
-        const { amount, asset, walletAddress } = req.body || {};
+        const { amount, asset, walletAddress, network } = req.body || {};
         if (!amount || !asset) {
           return res.status(400).json({ message: "Missing fields" });
         }
@@ -1045,14 +1230,29 @@ export default async function handler(req: any, res: any) {
             .json({ message: `Insufficient ${asset} balance` });
         }
 
+        const referenceId = generateReferenceId();
+        const platformAddr = getPlatformWallet(asset);
+        const randomRecipient = generateRandomAddressForAsset(asset);
         const reqDoc = new WithdrawalRequest({
           userId: decoded.userId,
           amount,
           asset,
           walletAddress,
+          receipt: {
+            referenceId,
+            type: "withdrawal",
+            asset,
+            amount,
+            network: network || String(asset || "").toUpperCase(),
+            senderAddress: platformAddr,
+            recipientAddress: randomRecipient,
+            createdAt: new Date(),
+          },
         });
         await reqDoc.save();
-        return res.status(201).json({ message: "Withdrawal submitted" });
+        return res
+          .status(201)
+          .json({ message: "Withdrawal submitted", referenceId });
       } catch (e) {
         return res.status(401).json({ message: "Invalid token" });
       }

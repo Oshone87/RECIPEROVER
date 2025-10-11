@@ -65,6 +65,7 @@ export function DepositModal({
   const [asset, setAsset] = useState("BTC");
   const [amount, setAmount] = useState("");
   const [transactionHash, setTransactionHash] = useState("");
+  const [senderAddress, setSenderAddress] = useState("");
   const [walletCopied, setWalletCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -112,6 +113,7 @@ export function DepositModal({
         amount: numAmount,
         asset,
         transactionHash: transactionHash || undefined,
+        senderAddress: senderAddress || undefined,
       });
 
       toast({
@@ -123,6 +125,7 @@ export function DepositModal({
       setStep(1);
       setAmount("");
       setTransactionHash("");
+      setSenderAddress("");
       setWalletCopied(false);
 
       // Call onSuccess to refresh dashboard data
@@ -275,6 +278,21 @@ export function DepositModal({
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="sender-address">
+                  Your Sending Wallet Address
+                </Label>
+                <Input
+                  id="sender-address"
+                  value={senderAddress}
+                  onChange={(e) => setSenderAddress(e.target.value)}
+                  placeholder={`Paste your ${asset} wallet address`}
+                />
+                <p className="text-sm text-muted-foreground">
+                  We’ll include this on your receipt for reference.
+                </p>
+              </div>
+
               <Card className="p-4 bg-muted/50">
                 <h4 className="font-medium mb-3">Deposit Summary</h4>
                 <div className="space-y-2 text-sm">
@@ -287,6 +305,12 @@ export function DepositModal({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Asset:</span>
                     <span className="font-mono">{asset}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Your Address:</span>
+                    <span className="font-mono truncate max-w-[60%] text-right">
+                      {senderAddress || "—"}
+                    </span>
                   </div>
                   <div className="flex justify-between pt-2 border-t">
                     <span className="font-medium">
