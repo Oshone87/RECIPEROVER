@@ -7,6 +7,12 @@ import { InvestmentModal } from "@/components/InvestmentModal";
 import { WithdrawalModal } from "@/components/WithdrawalModal";
 import { DepositModal } from "@/components/DepositModal";
 import { Card } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -211,28 +217,34 @@ export default function Dashboard() {
                 <span className="text-sm sm:text-base">New Investment</span>
               </Button>
 
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  if (!kycInfo.isVerified) {
-                    toast({
-                      title: "KYC Verification Required",
-                      description:
-                        "You must complete and have your KYC verification approved before making withdrawals.",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  setWithdrawalModalOpen(true);
-                }}
-                disabled={availableBalance <= 0}
-                data-testid="button-withdraw"
-                className="w-full sm:w-auto"
-              >
-                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                <span className="text-sm sm:text-base">Withdraw</span>
-              </Button>
+              <TooltipProvider>
+                <Tooltip open={!kycInfo.isVerified ? undefined : false}>
+                  <TooltipTrigger asChild>
+                    <span className="w-full sm:w-auto">
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        onClick={() => {
+                          if (!kycInfo.isVerified) return; // tooltip explains what to do
+                          setWithdrawalModalOpen(true);
+                        }}
+                        disabled={availableBalance <= 0}
+                        data-testid="button-withdraw"
+                        className="w-full sm:w-auto"
+                      >
+                        <Wallet className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                        <span className="text-sm sm:text-base">Withdraw</span>
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!kycInfo.isVerified && (
+                    <TooltipContent side="bottom">
+                      Go to Settings → KYC Verification to complete your KYC
+                      before withdrawing.
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         </div>

@@ -47,22 +47,11 @@ export function Navbar() {
   const { getAssetBalance } = useInvestment();
   const [, setLocation] = useLocation();
 
-  // Get user's KYC status
-  const getUserKycStatus = () => {
-    if (!user) return { isVerified: false, kycStatus: "not_submitted" };
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    );
-    const currentUser = registeredUsers.find(
-      (u: any) => u.email === user?.email
-    );
-    return {
-      isVerified: currentUser?.isVerified || false,
-      kycStatus: currentUser?.kycStatus || "not_submitted",
-    };
-  };
-
-  const kycInfo = getUserKycStatus();
+  // KYC status from authenticated user (backend source of truth)
+  const kycInfo = {
+    isVerified: !!user?.isVerified,
+    kycStatus: user?.kycStatus || "not_submitted",
+  } as const;
 
   // Handle account deletion
   const handleDeleteAccount = () => {
