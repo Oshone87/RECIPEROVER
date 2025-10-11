@@ -150,7 +150,7 @@ export function DepositModal({
         if (!open) resetModal();
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[95vw] sm:w-full max-w-md max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
