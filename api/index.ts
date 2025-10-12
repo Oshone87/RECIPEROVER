@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   isDisabled: { type: Boolean, default: false },
   role: { type: String, enum: ["user", "admin"], default: "user" },
+  timeZone: { type: String }, // IANA timezone, e.g., "Africa/Lagos"
   kycStatus: {
     type: String,
     enum: ["pending", "approved", "rejected"],
@@ -83,6 +84,17 @@ const investmentSchema = new mongoose.Schema({
 
 const Investment =
   mongoose.models.Investment || mongoose.model("Investment", investmentSchema);
+
+// Promotion Activation Schema (tracks per-user activation on local offer day)
+const promotionActivationSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  dateId: { type: String, required: true }, // YYYY-MM-DD in user's local timezone
+  activatedAt: { type: Date, default: Date.now },
+});
+promotionActivationSchema.index({ userId: 1, dateId: 1 }, { unique: true });
+const PromotionActivation =
+  (mongoose.models.PromotionActivation as any) ||
+  mongoose.model("PromotionActivation", promotionActivationSchema);
 
 // Deposit Request Schema
 const depositRequestSchema = new mongoose.Schema({
@@ -256,6 +268,67 @@ export default async function handler(req: any, res: any) {
       return 24;
     };
 
+    const tierMinFromTier = (tier: string | undefined): number => {
+      const t = (tier || "").toLowerCase();
+      if (t.includes("platinum")) return 10000;
+      if (t.includes("gold")) return 5000;
+      if (t.includes("silver")) return 1000;
+      return 1000;
+    };
+
+    // Timezone helpers
+    const getLocalParts = (d: Date, timeZone: string) => {
+      const fmt = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        weekday: "long",
+      });
+      const parts = fmt.formatToParts(d);
+      const p: Record<string, string> = {} as any;
+      for (const part of parts) p[part.type] = part.value;
+      // US gives month/day/year
+      const yyyy = p.year;
+      const mm = p.month;
+      const dd = p.day;
+      const weekday = (p.weekday || "").toLowerCase();
+      const map: Record<string, number> = {
+        monday: 1,
+        tuesday: 2,
+        wednesday: 3,
+        thursday: 4,
+        friday: 5,
+        saturday: 6,
+        sunday: 7,
+      };
+      const isoDow = map[weekday] || 1;
+      const dateId = `${yyyy}-${mm}-${dd}`; // YYYY-MM-DD
+      return { yyyy, mm, dd, isoDow, dateId };
+    };
+
+    const getUserTimeZone = async (userId: string, fallbackTZ?: string) => {
+      const user = await User.findById(userId);
+      return user?.timeZone || fallbackTZ || "UTC";
+    };
+
+    const isOfferDayForUser = async (userId: string, tzHeader?: string) => {
+      const tz = await getUserTimeZone(userId, tzHeader);
+      const { isoDow, dateId } = getLocalParts(new Date(), tz);
+      return { isOfferDay: isoDow === 5, dateId, tz };
+    };
+
+    const sameLocalDate = (
+      date: Date | string | undefined,
+      timeZone: string,
+      targetDateId: string
+    ) => {
+      if (!date) return false;
+      const d = typeof date === "string" ? new Date(date) : date;
+      const { dateId } = getLocalParts(d, timeZone);
+      return dateId === targetDateId;
+    };
+
     // Utility: asset field mapping
     const getAssetField = (asset: string, bal: any) => {
       const fieldMap: Record<string, keyof typeof bal> = {
@@ -350,6 +423,30 @@ export default async function handler(req: any, res: any) {
         timestamp: new Date().toISOString(),
         mongodb: "connected",
       });
+    }
+
+    // Update user timezone (optional helper) PUT /api/users/me/timezone
+    if (req.url === "/api/users/me/timezone" && req.method === "PUT") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId === "admin") {
+          return res.status(200).json({ message: "No-op for admin" });
+        }
+        const { timeZone } = req.body || {};
+        if (!timeZone || typeof timeZone !== "string") {
+          return res.status(400).json({ message: "timeZone required" });
+        }
+        await User.findByIdAndUpdate(decoded.userId, { timeZone });
+        return res.status(200).json({ message: "Time zone updated" });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
     }
 
     // Registration endpoint - support both /auth/register and /api/auth/register
@@ -563,6 +660,115 @@ export default async function handler(req: any, res: any) {
           })),
         });
       } catch (error) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // X2 Promo: Status (GET /api/promo/x2/status)
+    if (req.url === "/api/promo/x2/status" && req.method === "GET") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId === "admin") {
+          return res
+            .status(200)
+            .json({
+              isOfferDay: false,
+              activated: false,
+              canActivate: false,
+              canInvestX2: false,
+              minOverrideAllowed: false,
+              requiresDepositAmount: 0,
+            });
+        }
+        const tzHeader =
+          (req.headers["x-user-timezone"] as string) || undefined;
+        const { isOfferDay, dateId, tz } = await isOfferDayForUser(
+          decoded.userId,
+          tzHeader
+        );
+        // Find last deposit before today (any status)
+        const lastDeposit = await DepositRequest.findOne({
+          userId: decoded.userId,
+        }).sort({ submittedAt: -1 });
+        // If the last deposit is today, look for previous
+        let baseline = lastDeposit;
+        if (baseline && sameLocalDate(baseline.submittedAt, tz, dateId)) {
+          baseline = await DepositRequest.findOne({
+            userId: decoded.userId,
+            _id: { $ne: baseline._id },
+          }).sort({ submittedAt: -1 });
+        }
+        const threshold = baseline ? Number(baseline.amount || 0) * 0.5 : 0;
+        // Qualifying deposit: today + verified + amount >= threshold
+        const todaysVerified = await DepositRequest.find({
+          userId: decoded.userId,
+          status: "verified",
+        }).sort({ submittedAt: -1 });
+        const hasQualifiedToday = todaysVerified.some(
+          (d: any) =>
+            sameLocalDate(d.processedAt || d.submittedAt, tz, dateId) &&
+            Number(d.amount || 0) >= threshold
+        );
+        const activation = await PromotionActivation.findOne({
+          userId: decoded.userId,
+          dateId,
+        });
+        const activated = !!activation;
+        const canActivate = Boolean(isOfferDay);
+        const canInvestX2 = Boolean(
+          isOfferDay && activated && hasQualifiedToday
+        );
+        const minOverrideAllowed = canInvestX2; // client will still show min waived; server enforces nuanced rule per tier
+        return res.status(200).json({
+          isOfferDay,
+          activated,
+          requiresDepositAmount: Math.ceil(threshold),
+          hasVerifiedQualifyingDepositToday: hasQualifiedToday,
+          canActivate,
+          canInvestX2,
+          minOverrideAllowed,
+          dateId,
+        });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // X2 Promo: Activate (POST /api/promo/x2/activate)
+    if (req.url === "/api/promo/x2/activate" && req.method === "POST") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId === "admin") {
+          return res.status(403).json({ message: "Users only" });
+        }
+        const tzHeader =
+          (req.headers["x-user-timezone"] as string) || undefined;
+        const { isOfferDay, dateId } = await isOfferDayForUser(
+          decoded.userId,
+          tzHeader
+        );
+        if (!isOfferDay) {
+          return res
+            .status(400)
+            .json({ message: "Offer not available to activate" });
+        }
+        try {
+          await PromotionActivation.create({ userId: decoded.userId, dateId });
+        } catch {}
+        return res.status(200).json({ message: "Activated", dateId });
+      } catch (e) {
         return res.status(401).json({ message: "Invalid token" });
       }
     }
@@ -860,7 +1066,7 @@ export default async function handler(req: any, res: any) {
           return res.status(403).json({ message: "Users only" });
         }
 
-        const { tier, amount, asset, period, apr } = req.body || {};
+        const { tier, amount, asset, period } = req.body || {};
         if (!tier || !amount || !asset || !period) {
           return res.status(400).json({ message: "Missing required fields" });
         }
@@ -870,6 +1076,51 @@ export default async function handler(req: any, res: any) {
         if (!dbUser) return res.status(404).json({ message: "User not found" });
         if ((dbUser as any).isDisabled) {
           return res.status(403).json({ message: "User account disabled" });
+        }
+
+        // Offer-day logic: determine if min override and x2 APR apply
+        const { isOfferDay, dateId, tz } = await isOfferDayForUser(
+          decoded.userId,
+          dbUser?.timeZone
+        );
+        const activation = await PromotionActivation.findOne({
+          userId: decoded.userId,
+          dateId,
+        });
+        // Baseline: last deposit before today
+        const lastDeposit = await DepositRequest.findOne({
+          userId: decoded.userId,
+        }).sort({ submittedAt: -1 });
+        let baseline = lastDeposit;
+        if (baseline && sameLocalDate(baseline.submittedAt, tz, dateId)) {
+          baseline = await DepositRequest.findOne({
+            userId: decoded.userId,
+            _id: { $ne: baseline._id },
+          }).sort({ submittedAt: -1 });
+        }
+        const threshold = baseline ? Number(baseline.amount || 0) * 0.5 : 0;
+        const todaysVerified = await DepositRequest.find({
+          userId: decoded.userId,
+          status: "verified",
+        }).sort({ submittedAt: -1 });
+        const hasQualifiedToday = todaysVerified.some(
+          (d: any) =>
+            sameLocalDate(d.processedAt || d.submittedAt, tz, dateId) &&
+            Number(d.amount || 0) >= threshold
+        );
+        const minAllowed = tierMinFromTier(tier);
+        const qualifyBase = Boolean(
+          isOfferDay && activation && hasQualifiedToday
+        );
+        const qualifyForMinOverride = Boolean(
+          qualifyBase && threshold < minAllowed
+        );
+        if (!qualifyForMinOverride && Number(amount) < minAllowed) {
+          return res
+            .status(400)
+            .json({
+              message: `Minimum investment for ${tier} is $${minAllowed}`,
+            });
         }
 
         // Check and deduct from asset balance
@@ -894,13 +1145,16 @@ export default async function handler(req: any, res: any) {
         bal.totalBalance = Math.max(0, Number(bal.totalBalance || 0) - amount);
         await bal.save();
 
+        const useApr = Number(
+          qualifyBase ? aprFromTier(tier) * 2 : aprFromTier(tier)
+        );
         const inv = new Investment({
           userId: decoded.userId,
           tier,
           amount,
           asset,
           period,
-          apr: Number(apr || aprFromTier(tier)),
+          apr: useApr,
           status: "active",
         });
         await inv.save();

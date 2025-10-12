@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useInvestment } from "@/contexts/InvestmentContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/contexts/AdminContext";
+import { apiClient } from "@/lib/apiClient";
 
 const TIERS = {
   silver: {
@@ -75,6 +76,7 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
   const [walletCopied, setWalletCopied] = useState(false);
   const [showDepositStep, setShowDepositStep] = useState(false);
   const [transactionHash, setTransactionHash] = useState("");
+  const [promo, setPromo] = useState<any | null>(null);
   const { toast } = useToast();
   const {
     balance,
@@ -91,6 +93,16 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
   const total = amount + interest;
   const assetBalance = getAssetBalance(asset); // Get balance for specific asset
   const needsDeposit = amount > assetBalance; // Check against asset-specific balance
+  const qualifiesToday = Boolean(
+    promo?.isOfferDay &&
+      promo?.activated &&
+      promo?.hasVerifiedQualifyingDepositToday
+  );
+  const minOverrideWaived = Boolean(
+    qualifiesToday &&
+      Number(promo?.requiresDepositAmount || 0) < selectedTier.min
+  );
+  const dynamicMin = minOverrideWaived ? 1 : selectedTier.min;
 
   // Check if user is KYC verified
   const isKYCVerified = user?.isVerified || false;
@@ -106,6 +118,20 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
       });
     }
   };
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      try {
+        const p = await apiClient.getPromoX2Status();
+        setPromo(p);
+        // If min is waived today, ensure amount is at least 1
+        if (p?.minOverrideAllowed && amount < 1) {
+          setAmount(1);
+        }
+      } catch {}
+    })();
+  }, [open]);
 
   const handleDepositSubmit = () => {
     const depositAmount = amount - assetBalance; // Only deposit what's needed for this specific asset
@@ -153,7 +179,7 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
       tier: selectedTier.label,
       asset,
       amount,
-      apr: selectedTier.apr * 100, // Convert to percentage
+      apr: selectedTier.apr, // server computes final APR and x2 when applicable
       period,
     });
 
@@ -323,12 +349,19 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
-                  min={selectedTier.min}
+                  min={dynamicMin}
                   max={assetBalance}
                   data-testid="input-investment-amount"
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Minimum: ${selectedTier.min.toLocaleString()}</span>
+                  <span>
+                    Minimum:{" "}
+                    {minOverrideWaived ? (
+                      <span className="text-green-600">Waived Today</span>
+                    ) : (
+                      `$${selectedTier.min.toLocaleString()}`
+                    )}
+                  </span>
                   <span>Maximum: ${assetBalance.toLocaleString()}</span>
                 </div>
                 {needsDeposit && (
@@ -477,6 +510,12 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                       ${interest.toFixed(2)}
                     </span>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Tip: On your Offer Day, if you activate “Earn x2” and have a
+                    verified deposit ≥ 50% of your last deposit today, your APR
+                    is doubled for today’s investments and tier minimums are
+                    waived.
+                  </p>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
                       Estimated Total:
@@ -536,6 +575,12 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                       ${interest.toFixed(2)}
                     </span>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Tip: On your Offer Day, if you activate “Earn x2” and have a
+                    verified deposit ≥ 50% of your last deposit today, your APR
+                    is doubled for today’s investments and tier minimums are
+                    waived.
+                  </p>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
                       Estimated Total:

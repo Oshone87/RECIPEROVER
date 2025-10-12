@@ -18,9 +18,14 @@ try {
 class ApiClient {
   private getAuthHeaders() {
     const token = localStorage.getItem("authToken");
+    let tz: string | undefined;
+    try {
+      tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {}
     return {
       "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
+      ...(tz && { "x-user-timezone": tz }),
     };
   }
 
@@ -132,6 +137,23 @@ class ApiClient {
   async getInvestment(id: string) {
     const response = await fetch(`${API_BASE_URL}/investments/${id}`, {
       headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  // Promo X2 APIs
+  async getPromoX2Status() {
+    const response = await fetch(`${API_BASE_URL}/promo/x2/status`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async activatePromoX2() {
+    const response = await fetch(`${API_BASE_URL}/promo/x2/activate`, {
+      method: "POST",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({}),
     });
     return this.handleResponse(response);
   }

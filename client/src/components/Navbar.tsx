@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Moon,
@@ -46,6 +47,8 @@ export function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
   const { getAssetBalance } = useInvestment();
   const [, setLocation] = useLocation();
+  const [promo, setPromo] = useState<any | null>(null);
+  const [loadingPromo, setLoadingPromo] = useState(false);
 
   // KYC status from authenticated user (backend source of truth)
   const kycInfo = {
@@ -222,6 +225,52 @@ export function Navbar() {
                       </p>
                     </div>
                   </DropdownMenuLabel>
+
+                  <DropdownMenuSeparator />
+
+                  {/* Offer Day x2 */}
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      if (loadingPromo) return;
+                      setLoadingPromo(true);
+                      try {
+                        const p = await (
+                          await import("@/lib/apiClient")
+                        ).apiClient.getPromoX2Status();
+                        setPromo(p);
+                      } catch {}
+                      setLoadingPromo(false);
+                    }}
+                    className="flex-col items-start space-y-1 py-3"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        <span className="text-sm font-medium">Offer Day</span>
+                      </div>
+                      <Badge
+                        variant={
+                          promo?.isOfferDay
+                            ? promo?.activated
+                              ? "destructive"
+                              : "secondary"
+                            : "outline"
+                        }
+                        className="text-xs"
+                      >
+                        {promo?.isOfferDay
+                          ? promo?.activated
+                            ? "x2 Active"
+                            : "Today"
+                          : "Not today"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {promo?.isOfferDay
+                        ? "Deposit ≥ 50% of your last deposit (verified), then activate and invest today to earn x2."
+                        : "Your next offer day is your next Friday (local time)."}
+                    </p>
+                  </DropdownMenuItem>
 
                   <DropdownMenuSeparator />
 

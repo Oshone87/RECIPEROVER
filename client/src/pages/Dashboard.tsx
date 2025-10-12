@@ -33,6 +33,8 @@ import { SiBitcoin, SiEthereum } from "react-icons/si";
 import { TbCurrencySolana } from "react-icons/tb";
 import { apiClient } from "@/lib/apiClient";
 import { TransactionDetailsModal } from "@/components/TransactionDetailsModal";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Flame } from "lucide-react";
 
 export default function Dashboard() {
   const { isAuthenticated, user } = useAuth();
@@ -64,6 +66,8 @@ export default function Dashboard() {
   });
   const [realTransactions, setRealTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [promo, setPromo] = useState<any | null>(null);
+  const [activating, setActivating] = useState(false);
 
   // Fetch real user data
   useEffect(() => {
@@ -93,6 +97,12 @@ export default function Dashboard() {
         ? transactionsResponse.transactions
         : [];
       setRealTransactions(tx as any);
+
+      // Promo status (best-effort)
+      try {
+        const p = await apiClient.getPromoX2Status();
+        setPromo(p);
+      } catch {}
     } catch (error) {
       console.error("Failed to fetch user data:", error);
       toast({
@@ -142,12 +152,47 @@ export default function Dashboard() {
   const totalBalance = Number(balance ?? 0);
   const availableBalance = Number(getAvailableBalance() ?? 0);
 
+  const offerBanner = promo?.isOfferDay ? (
+    <Alert className="mb-4 border-red-500/30 bg-red-50 dark:bg-red-950/20">
+      <Flame className="h-4 w-4 text-red-600" />
+      <AlertTitle className="text-red-700 dark:text-red-300">
+        Offer Day: Earn x2 returns today only
+      </AlertTitle>
+      <AlertDescription className="text-sm">
+        Deposit at least $
+        {promo?.requiresDepositAmount?.toLocaleString?.() || 0} (verified by
+        admin) relative to your last deposit, then click “Earn x2” and invest
+        today to qualify. Tier minimums are waived for qualified investments
+        today only.
+      </AlertDescription>
+    </Alert>
+  ) : null;
+
+  const onActivatePromo = async () => {
+    if (!promo?.canActivate) return;
+    setActivating(true);
+    try {
+      await apiClient.activatePromoX2();
+      const fresh = await apiClient.getPromoX2Status();
+      setPromo(fresh);
+    } catch (e: any) {
+      toast({
+        title: "Activation failed",
+        description: e?.message || "",
+        variant: "destructive",
+      });
+    } finally {
+      setActivating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          {offerBanner}
           <div className="space-y-6 sm:space-y-0 sm:flex sm:flex-wrap sm:justify-between sm:items-center sm:gap-6">
             <div className="space-y-1 text-center sm:text-left">
               <p className="text-sm opacity-90">Total Balance</p>
@@ -248,6 +293,22 @@ export default function Dashboard() {
                   )}
                 </Tooltip>
               </TooltipProvider>
+
+              {/* Offer Day control */}
+              {promo?.isOfferDay && (
+                <Button
+                  size="lg"
+                  variant={promo?.activated ? "destructive" : "secondary"}
+                  disabled={!promo?.canActivate || promo?.activated}
+                  onClick={onActivatePromo}
+                  className={`w-full sm:w-auto ${
+                    promo?.activated ? "" : "opacity-90"
+                  }`}
+                >
+                  <Flame className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                  {promo?.activated ? "x2 Active Today" : "Earn x2 Today"}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -372,6 +433,11 @@ export default function Dashboard() {
           if (!open) {
             // refresh on close in case an investment was created
             fetchUserData();
+            // also refresh promo state
+            apiClient
+              .getPromoX2Status()
+              .then(setPromo)
+              .catch(() => {});
           }
         }}
       />
@@ -384,7 +450,13 @@ export default function Dashboard() {
       <DepositModal
         open={depositModalOpen}
         onOpenChange={setDepositModalOpen}
-        onSuccess={fetchUserData}
+        onSuccess={() => {
+          fetchUserData();
+          apiClient
+            .getPromoX2Status()
+            .then(setPromo)
+            .catch(() => {});
+        }}
       />
       <TransactionDetailsModal
         open={detailsOpen}

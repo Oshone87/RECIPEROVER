@@ -6,6 +6,17 @@
 			"type": "shell",
 			"command": "npm run -s typecheck",
 			"group": "build"
+		},
+		{
+			"label": "Build client (vite) to validate TS",
+			"type": "shell",
+			"command": "npm run build",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
 		}
 	]
 }
