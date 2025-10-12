@@ -231,6 +231,16 @@ class ApiClient {
     return this.handleResponse(response);
   }
 
+  async getKYCRequestById(requestId: string) {
+    const response = await fetch(
+      `${API_BASE_URL}/admin/kyc-requests/${requestId}`,
+      {
+        headers: this.getAuthHeaders(),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
   async updateKYCRequest(
     requestId: string,
     status: string,

@@ -48,33 +48,64 @@ export default function KYC() {
   // Document Information
   const [documentType, setDocumentType] = useState("");
   const [documentNumber, setDocumentNumber] = useState("");
-  const [selfieImage, setSelfieImage] = useState<string | null>(null);
   const [idImage, setIdImage] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selfieInputRef = useRef<HTMLInputElement>(null);
   const idInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = (file: File, type: "selfie" | "id") => {
-    if (file && file.type.startsWith("image/")) {
+  // Compress image on client and return base64 data URL; enforce <= 2MB post-compression
+  const compressImageToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith("image/")) {
+        return reject(new Error("Invalid image type"));
+      }
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        if (type === "selfie") {
-          setSelfieImage(result);
-        } else {
-          setIdImage(result);
-        }
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            const maxDim = 1280;
+            let { width, height } = img;
+            if (width > height && width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else if (height >= width && height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return reject(new Error("Canvas not supported"));
+            ctx.drawImage(img, 0, 0, width, height);
+            const quality = 0.7; // JPEG quality
+            const mime = file.type.includes("png")
+              ? "image/jpeg"
+              : "image/jpeg";
+            const dataUrl = canvas.toDataURL(mime, quality);
+            // Validate size <= 2MB after compression
+            const base64 = dataUrl.split(",")[1] || "";
+            const sizeBytes = Math.ceil((base64.length * 3) / 4);
+            if (sizeBytes > 2 * 1024 * 1024) {
+              return reject(
+                new Error(
+                  "Compressed image is over 2MB. Please choose a smaller image."
+                )
+              );
+            }
+            resolve(dataUrl);
+          } catch (e) {
+            reject(e);
+          }
+        };
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = reader.result as string;
       };
+      reader.onerror = () => reject(new Error("Failed to read file"));
       reader.readAsDataURL(file);
-    } else {
-      toast({
-        title: "Invalid file",
-        description: "Please upload a valid image file",
-        variant: "destructive",
-      });
-    }
+    });
   };
 
   const handleSubmit = async () => {
@@ -90,12 +121,11 @@ export default function KYC() {
       !postalCode ||
       !documentType ||
       !documentNumber ||
-      !selfieImage ||
       !idImage
     ) {
       toast({
         title: "Incomplete information",
-        description: "Please fill all fields and upload both images",
+        description: "Please fill all fields and upload your ID document",
         variant: "destructive",
       });
       return;
@@ -123,6 +153,9 @@ export default function KYC() {
           postalCode,
           documentType,
           documentNumber,
+          documentImageDataUrl: idImage,
+          documentImageMimeType:
+            idImage?.split(":")[1]?.split(";")[0] || "image/jpeg",
         }),
       });
 
@@ -430,7 +463,8 @@ export default function KYC() {
                         <div className="space-y-2">
                           <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
                           <p className="text-sm text-muted-foreground">
-                            Click to upload ID document
+                            Click to upload ID document (max 2MB after
+                            compression)
                           </p>
                         </div>
                       )}
@@ -440,51 +474,24 @@ export default function KYC() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) =>
-                        e.target.files?.[0] &&
-                        handleImageUpload(e.target.files[0], "id")
-                      }
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        try {
+                          const dataUrl = await compressImageToDataUrl(f);
+                          setIdImage(dataUrl);
+                        } catch (err: any) {
+                          toast({
+                            title: "Image too large",
+                            description:
+                              err?.message ||
+                              "Please choose a smaller image (<= 2MB)",
+                            variant: "destructive",
+                          });
+                          setIdImage(null);
+                        }
+                      }}
                       data-testid="input-id-upload"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Upload Selfie</Label>
-                    <div
-                      className="border-2 border-dashed border-muted rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                      onClick={() => selfieInputRef.current?.click()}
-                    >
-                      {selfieImage ? (
-                        <div className="space-y-2">
-                          <img
-                            src={selfieImage}
-                            alt="Selfie"
-                            className="max-h-32 mx-auto rounded"
-                          />
-                          <p className="text-sm text-green-600 flex items-center justify-center gap-1">
-                            <CheckCircle className="h-4 w-4" />
-                            Selfie uploaded
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Camera className="h-8 w-8 mx-auto text-muted-foreground" />
-                          <p className="text-sm text-muted-foreground">
-                            Click to upload selfie
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <input
-                      ref={selfieInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) =>
-                        e.target.files?.[0] &&
-                        handleImageUpload(e.target.files[0], "selfie")
-                      }
-                      data-testid="input-selfie-upload"
                     />
                   </div>
                 </div>
@@ -510,7 +517,7 @@ export default function KYC() {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !idImage || !selfieImage}
+                disabled={isSubmitting || !idImage}
                 data-testid="button-kyc-submit"
               >
                 {isSubmitting ? "Submitting..." : "Submit KYC for Verification"}

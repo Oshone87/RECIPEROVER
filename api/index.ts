@@ -43,6 +43,9 @@ const kycRequestSchema = new mongoose.Schema({
   postalCode: { type: String, required: true },
   documentType: { type: String, required: true },
   documentNumber: { type: String, required: true },
+  // Store the single ID document image as a data URL base64 string
+  documentImageDataUrl: { type: String },
+  documentImageMimeType: { type: String },
   status: {
     type: String,
     enum: ["pending", "approved", "rejected"],
@@ -600,6 +603,26 @@ export default async function handler(req: any, res: any) {
         });
       }
 
+      // Accept one required ID document image (base64 data URL)
+      const { documentImageDataUrl, documentImageMimeType } = req.body || {};
+      if (!documentImageDataUrl || typeof documentImageDataUrl !== "string") {
+        return res
+          .status(400)
+          .json({ message: "ID document image is required" });
+      }
+
+      // Basic size guardrail: reject if payload too large (> ~2.5MB) to protect serverless limits
+      try {
+        const base64 = documentImageDataUrl.split(",")[1] || "";
+        const bytes = Buffer.from(base64, "base64");
+        if (bytes.length > 2.5 * 1024 * 1024) {
+          return res.status(413).json({
+            message:
+              "Image too large after compression. Please upload a smaller image (<= 2MB)",
+          });
+        }
+      } catch {}
+
       // Check authorization header
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -632,6 +655,12 @@ export default async function handler(req: any, res: any) {
           postalCode,
           documentType,
           documentNumber,
+          documentImageDataUrl,
+          documentImageMimeType:
+            documentImageMimeType ||
+            (documentImageDataUrl.startsWith("data:")
+              ? documentImageDataUrl.split(":")[1]?.split(";")[0]
+              : undefined),
         });
 
         await kycRequest.save();
@@ -1023,6 +1052,51 @@ export default async function handler(req: any, res: any) {
           })),
         });
       } catch (error) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Get single KYC request details (admin only)
+    if (
+      req.url?.startsWith("/api/admin/kyc-requests/") &&
+      req.method === "GET"
+    ) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const id = req.url.split("/").pop();
+        const kyc = await KYCRequest.findById(id).populate("userId", "email");
+        if (!kyc) return res.status(404).json({ message: "Not found" });
+        return res.status(200).json({
+          request: {
+            _id: kyc._id,
+            userId: kyc.userId,
+            firstName: kyc.firstName,
+            lastName: kyc.lastName,
+            nationality: kyc.nationality,
+            phoneNumber: kyc.phoneNumber,
+            address: kyc.address,
+            city: kyc.city,
+            country: kyc.country,
+            postalCode: kyc.postalCode,
+            documentType: kyc.documentType,
+            documentNumber: kyc.documentNumber,
+            status: kyc.status,
+            submittedAt: kyc.submittedAt,
+            adminNotes: kyc.adminNotes,
+            documentImageDataUrl: kyc.documentImageDataUrl,
+            documentImageMimeType: kyc.documentImageMimeType,
+          },
+        });
+      } catch (e) {
         return res.status(401).json({ message: "Invalid token" });
       }
     }

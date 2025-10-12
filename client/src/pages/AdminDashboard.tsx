@@ -3,6 +3,13 @@ import { useLocation } from "wouter";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -119,6 +126,9 @@ export default function AdminDashboard() {
     pendingKyc: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [kycViewOpen, setKycViewOpen] = useState(false);
+  const [kycViewLoading, setKycViewLoading] = useState(false);
+  const [kycDetail, setKycDetail] = useState<any | null>(null);
 
   // Check admin access and fetch data
   useEffect(() => {
@@ -210,6 +220,25 @@ export default function AdminDashboard() {
         description: "Failed to approve KYC request",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleViewKYC = async (requestId: string) => {
+    try {
+      setKycViewLoading(true);
+      setKycDetail(null);
+      setKycViewOpen(true);
+      const data = await apiClient.getKYCRequestById(requestId);
+      setKycDetail(data.request || data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load KYC details",
+        variant: "destructive",
+      });
+      setKycViewOpen(false);
+    } finally {
+      setKycViewLoading(false);
     }
   };
 
@@ -878,27 +907,38 @@ export default function AdminDashboard() {
                               </p>
                             </td>
                             <td className="py-3 px-4">
-                              {request.status === "pending" && (
-                                <div className="flex flex-wrap gap-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      handleApproveKYC(request._id)
-                                    }
-                                  >
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => handleRejectKYC(request._id)}
-                                  >
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Reject
-                                  </Button>
-                                </div>
-                              )}
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleViewKYC(request._id)}
+                                >
+                                  View
+                                </Button>
+                                {request.status === "pending" && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        handleApproveKYC(request._id)
+                                      }
+                                    >
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() =>
+                                        handleRejectKYC(request._id)
+                                      }
+                                    >
+                                      <XCircle className="h-3 w-3 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -1142,6 +1182,69 @@ export default function AdminDashboard() {
       </div>
 
       <Footer />
+
+      {/* KYC Detail Viewer */}
+      <Dialog open={kycViewOpen} onOpenChange={setKycViewOpen}>
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>KYC Details</DialogTitle>
+            <DialogDescription>
+              View submitted identity information and document image
+            </DialogDescription>
+          </DialogHeader>
+          {kycViewLoading ? (
+            <div className="py-8 text-center">Loading...</div>
+          ) : kycDetail ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Name</p>
+                  <p className="font-medium">
+                    {kycDetail.firstName} {kycDetail.lastName}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">User</p>
+                  <p className="font-mono text-sm">
+                    {kycDetail.userId?.email || "Unknown"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Document</p>
+                  <p className="font-medium">
+                    {kycDetail.documentType} • {kycDetail.documentNumber}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="font-medium">{kycDetail.status}</p>
+                </div>
+              </div>
+
+              {kycDetail.documentImageDataUrl ? (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    ID Document Image
+                  </p>
+                  <img
+                    src={kycDetail.documentImageDataUrl}
+                    alt="KYC ID Document"
+                    className="max-h-[60vh] w-auto rounded border"
+                  />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No image attached
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              No details available
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
