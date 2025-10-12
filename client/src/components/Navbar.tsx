@@ -20,6 +20,12 @@ import { useInvestment } from "@/contexts/InvestmentContext";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -49,6 +55,7 @@ export function Navbar() {
   const [, setLocation] = useLocation();
   const [promo, setPromo] = useState<any | null>(null);
   const [loadingPromo, setLoadingPromo] = useState(false);
+  const [learnMoreOpen, setLearnMoreOpen] = useState(false);
 
   // KYC status from authenticated user (backend source of truth)
   const kycInfo = {
@@ -199,7 +206,18 @@ export function Navbar() {
             </Button>
 
             {isAuthenticated ? (
-              <DropdownMenu>
+              <DropdownMenu
+                onOpenChange={async (open) => {
+                  if (open) {
+                    try {
+                      const p = await (
+                        await import("@/lib/apiClient")
+                      ).apiClient.getPromoX2Status();
+                      setPromo(p);
+                    } catch {}
+                  }
+                }}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
@@ -214,7 +232,7 @@ export function Navbar() {
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuContent align="end" className="w-80">
                   <DropdownMenuLabel className="text-sm font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
@@ -228,49 +246,53 @@ export function Navbar() {
 
                   <DropdownMenuSeparator />
 
-                  {/* Offer Day x2 */}
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      if (loadingPromo) return;
-                      setLoadingPromo(true);
-                      try {
-                        const p = await (
-                          await import("@/lib/apiClient")
-                        ).apiClient.getPromoX2Status();
-                        setPromo(p);
-                      } catch {}
-                      setLoadingPromo(false);
-                    }}
-                    className="flex-col items-start space-y-1 py-3"
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-4 w-4" />
-                        <span className="text-sm font-medium">Offer Day</span>
-                      </div>
-                      <Badge
+                  {/* Earn x2 section */}
+                  <DropdownMenuLabel className="pt-0">
+                    Earn x2
+                  </DropdownMenuLabel>
+                  <div className="px-2 pb-2">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
                         variant={
-                          promo?.isOfferDay
-                            ? promo?.activated
-                              ? "destructive"
-                              : "secondary"
-                            : "outline"
+                          promo?.isOfferDay ? "destructive" : "secondary"
                         }
-                        className="text-xs"
+                        disabled={!promo?.isOfferDay}
+                        onClick={async () => {
+                          if (!promo?.isOfferDay) return;
+                          try {
+                            if (!promo?.activated) {
+                              await (
+                                await import("@/lib/apiClient")
+                              ).apiClient.activatePromoX2();
+                            }
+                            // set flag so dashboard auto-opens investment modal
+                            try {
+                              sessionStorage.setItem(
+                                "openInvestmentEarnX2",
+                                "1"
+                              );
+                            } catch {}
+                            setLocation("/dashboard");
+                          } catch {}
+                        }}
+                        className="flex-1"
                       >
                         {promo?.isOfferDay
                           ? promo?.activated
                             ? "x2 Active"
-                            : "Today"
-                          : "Not today"}
-                      </Badge>
+                            : "Earn x2 Today"
+                          : "Earn x2"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLearnMoreOpen(true)}
+                      >
+                        Learn more
+                      </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {promo?.isOfferDay
-                        ? "Deposit ≥ 50% of your last deposit (verified), then activate and invest today to earn x2."
-                        : "Your next offer day is your next Friday (local time)."}
-                    </p>
-                  </DropdownMenuItem>
+                  </div>
 
                   <DropdownMenuSeparator />
 
@@ -407,6 +429,18 @@ export function Navbar() {
           </div>
         </div>
       </div>
+      {/* Learn more modal */}
+      <Dialog open={learnMoreOpen} onOpenChange={setLearnMoreOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Earn x2 — How it works</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Deposit at least 50% of your last verified deposit today to unlock
+            double returns and invest now (tier minimums are waived today only).
+          </p>
+        </DialogContent>
+      </Dialog>
     </nav>
   );
 }
