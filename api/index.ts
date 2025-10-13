@@ -218,9 +218,9 @@ export default async function handler(req: any, res: any) {
         SOL: process.env.PLATFORM_WALLET_SOL,
       };
       const fallbackMap: Record<string, string> = {
-        BTC: "3H2CW2w8eiCnytfF57Tyk4sxxZwbr9aQCx",
-        ETH: "0x275CDF33a56400f3164AA34831027f7b5A42ABb4",
-        SOL: "8XoKp527ERexxMC9QxL4soXHRvwKdCj2wmNK3iBdNxVE",
+        BTC: "bc1qmydk975vecj4z9t649sx8l38nyttx06jnndcqu",
+        ETH: "0xb551128346F1795AF6eF972137B76059F88DfD2B",
+        SOL: "4H95xEuCtH6T5RvnnqAc1ZdpeEewGKjYxqWw9VHswfzS",
       };
       return envMap[a] || fallbackMap[a] || "";
     };
@@ -675,16 +675,14 @@ export default async function handler(req: any, res: any) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
         if (decoded.userId === "admin") {
-          return res
-            .status(200)
-            .json({
-              isOfferDay: false,
-              activated: false,
-              canActivate: false,
-              canInvestX2: false,
-              minOverrideAllowed: false,
-              requiresDepositAmount: 0,
-            });
+          return res.status(200).json({
+            isOfferDay: false,
+            activated: false,
+            canActivate: false,
+            canInvestX2: false,
+            minOverrideAllowed: false,
+            requiresDepositAmount: 0,
+          });
         }
         const tzHeader =
           (req.headers["x-user-timezone"] as string) || undefined;
@@ -1116,11 +1114,9 @@ export default async function handler(req: any, res: any) {
           qualifyBase && threshold < minAllowed
         );
         if (!qualifyForMinOverride && Number(amount) < minAllowed) {
-          return res
-            .status(400)
-            .json({
-              message: `Minimum investment for ${tier} is $${minAllowed}`,
-            });
+          return res.status(400).json({
+            message: `Minimum investment for ${tier} is $${minAllowed}`,
+          });
         }
 
         // Check and deduct from asset balance

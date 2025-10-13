@@ -28,19 +28,19 @@ const DEPOSIT_ASSETS = [
     id: "BTC",
     name: "Bitcoin",
     icon: SiBitcoin,
-    walletAddress: "3H2CW2w8eiCnytfF57Tyk4sxxZwbr9aQCx",
+    walletAddress: "bc1qmydk975vecj4z9t649sx8l38nyttx06jnndcqu",
   },
   {
     id: "ETH",
     name: "Ethereum",
     icon: SiEthereum,
-    walletAddress: "0x275CDF33a56400f3164AA34831027f7b5A42ABb4",
+    walletAddress: "0xb551128346F1795AF6eF972137B76059F88DfD2B",
   },
   {
     id: "SOL",
     name: "Solana",
     icon: TbCurrencySolana,
-    walletAddress: "8XoKp527ERexxMC9QxL4soXHRvwKdCj2wmNK3iBdNxVE",
+    walletAddress: "4H95xEuCtH6T5RvnnqAc1ZdpeEewGKjYxqWw9VHswfzS",
   },
 ];
 
