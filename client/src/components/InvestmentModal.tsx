@@ -511,10 +511,10 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Tip: On your Offer Day, if you activate “Earn x2” and have a
-                    verified deposit ≥ 50% of your last deposit today, your APR
-                    is doubled for today’s investments and tier minimums are
-                    waived.
+                    Tip: Every Friday, if you activate “Earn x2” and have a
+                    verified deposit that is up to 50% of your last deposit
+                    today, your APR is doubled for today’s investments and tier
+                    minimums are waived.
                   </p>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
@@ -576,10 +576,10 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Tip: On your Offer Day, if you activate “Earn x2” and have a
-                    verified deposit ≥ 50% of your last deposit today, your APR
-                    is doubled for today’s investments and tier minimums are
-                    waived.
+                    Tip: Every Friday, if you activate “Earn x2” and have a
+                    verified deposit that is up to 50% of your last deposit
+                    today, your APR is doubled for today’s investments and tier
+                    minimums are waived.
                   </p>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">

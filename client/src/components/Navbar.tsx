@@ -436,8 +436,9 @@ export function Navbar() {
             <DialogTitle>Earn x2 — How it works</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Deposit at least 50% of your last verified deposit today to unlock
-            double returns and invest now (tier minimums are waived today only).
+            Every Friday, if you activate Earn x2 and make a verified deposit
+            that is up to 50% of your last deposit, you can invest with double
+            returns today. Tier minimums may be waived today when qualifying.
           </p>
         </DialogContent>
       </Dialog>

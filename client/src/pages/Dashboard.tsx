@@ -14,6 +14,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -65,6 +71,10 @@ export default function Dashboard() {
   });
   const [realTransactions, setRealTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingEarnX2, setPendingEarnX2] = useState(false);
+  const [showEarnX2Explain, setShowEarnX2Explain] = useState(false);
+  const [openInvestmentAfterDeposit, setOpenInvestmentAfterDeposit] =
+    useState(false);
   // Promo UI removed from dashboard; status handled via settings dropdown
 
   // Fetch real user data
@@ -95,6 +105,12 @@ export default function Dashboard() {
         ? transactionsResponse.transactions
         : [];
       setRealTransactions(tx as any);
+
+      // If we were routed from Earn x2, show the explanation modal now that data is loaded
+      if (pendingEarnX2) {
+        setPendingEarnX2(false);
+        setShowEarnX2Explain(true);
+      }
     } catch (error) {
       console.error("Failed to fetch user data:", error);
       toast({
@@ -121,12 +137,12 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, setLocation]);
 
-  // If redirected from settings Earn x2 (on offer day), auto-open investment modal
+  // If redirected from settings Earn x2 (on offer day), mark pending so we show the explain modal after data loads
   useEffect(() => {
     const flag = sessionStorage.getItem("openInvestmentEarnX2");
     if (flag === "1") {
       sessionStorage.removeItem("openInvestmentEarnX2");
-      setModalOpen(true);
+      setPendingEarnX2(true);
     }
   }, []);
 
@@ -400,9 +416,51 @@ export default function Dashboard() {
         open={depositModalOpen}
         onOpenChange={setDepositModalOpen}
         onSuccess={() => {
+          // After deposit success, refresh balances and optionally open investment modal
           fetchUserData();
+          if (openInvestmentAfterDeposit) {
+            setOpenInvestmentAfterDeposit(false);
+            setModalOpen(true);
+          }
         }}
       />
+      {/* Earn x2 explanation modal: shown right after user clicks Earn x2 */}
+      <Dialog open={showEarnX2Explain} onOpenChange={setShowEarnX2Explain}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Earn x2 — What this means</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-4">
+            Every Friday, if you activate Earn x2 and make a verified deposit
+            that is up to 50% of your last deposit, your APR is doubled for
+            investments you make today. If you don’t have any funds yet, you’ll
+            be directed to make a deposit first. Tier minimums may be waived
+            today when qualifying.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowEarnX2Explain(false)}
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                // Decide next step: deposit if no available balance, else investment
+                setShowEarnX2Explain(false);
+                if (availableBalance <= 0) {
+                  setOpenInvestmentAfterDeposit(true);
+                  setDepositModalOpen(true);
+                } else {
+                  setModalOpen(true);
+                }
+              }}
+            >
+              Proceed
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <TransactionDetailsModal
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
