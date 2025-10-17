@@ -272,8 +272,15 @@ export function Navbar() {
                                 "openInvestmentEarnX2",
                                 "1"
                               );
+                              // If we're already on the dashboard, dispatch an event to open the modal immediately
+                              if (location === "/dashboard") {
+                                window.dispatchEvent(
+                                  new CustomEvent("earnx2:open")
+                                );
+                              } else {
+                                setLocation("/dashboard");
+                              }
                             } catch {}
-                            setLocation("/dashboard");
                           } catch {}
                         }}
                         className="flex-1"

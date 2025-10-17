@@ -144,6 +144,14 @@ export default function Dashboard() {
       sessionStorage.removeItem("openInvestmentEarnX2");
       setPendingEarnX2(true);
     }
+    // Also handle in-page trigger when already on dashboard
+    const handler = () => {
+      setShowEarnX2Explain(true);
+    };
+    window.addEventListener("earnx2:open", handler as EventListener);
+    return () => {
+      window.removeEventListener("earnx2:open", handler as EventListener);
+    };
   }, []);
 
   if (!isAuthenticated) {
