@@ -96,6 +96,21 @@ export default function AdminDashboard() {
     WithdrawalRequest[]
   >([]);
   const [activeInvestments, setActiveInvestments] = useState<any[]>([]);
+  const [allInvestments, setAllInvestments] = useState<any[]>([]);
+  const [invStatusFilter, setInvStatusFilter] = useState<
+    "active" | "completed" | "cancelled" | "all"
+  >("active");
+  const [invEmailSearch, setInvEmailSearch] = useState("");
+  const [invAssetFilter, setInvAssetFilter] = useState<
+    "all" | "BTC" | "ETH" | "SOL"
+  >("all");
+  const [invTierFilter, setInvTierFilter] = useState<
+    "all" | "Silver" | "Gold" | "Platinum"
+  >("all");
+  const [invPage, setInvPage] = useState(1);
+  const invPageSize = 10;
+  const [invDetailOpen, setInvDetailOpen] = useState(false);
+  const [invDetail, setInvDetail] = useState<any | null>(null);
   // Users tab state
   const [usersFilter, setUsersFilter] = useState<"all" | "verified">("all");
   const [userSearch, setUserSearch] = useState("");
@@ -168,6 +183,7 @@ export default function AdminDashboard() {
         depositsResponse,
         withdrawalsResponse,
         activeInvResponse,
+        allInvResponse,
       ] = await Promise.all([
         apiClient.getAllUsers(),
         apiClient.getPlatformStats(),
@@ -175,6 +191,7 @@ export default function AdminDashboard() {
         apiClient.getDepositRequests(),
         apiClient.getWithdrawalRequests(),
         apiClient.getAllInvestments(),
+        apiClient.getAllInvestmentsAll(),
       ]);
 
       setUsers(usersResponse.users || []);
@@ -193,6 +210,7 @@ export default function AdminDashboard() {
       setDepositRequests(depositsResponse.requests || []);
       setWithdrawalRequests(withdrawalsResponse.requests || []);
       setActiveInvestments(activeInvResponse.investments || []);
+      setAllInvestments(allInvResponse.investments || []);
     } catch (error) {
       console.error("Failed to fetch admin data:", error);
       toast({
@@ -779,13 +797,16 @@ export default function AdminDashboard() {
                         <th className="text-left py-3 px-4 text-xs sm:text-sm">
                           Date
                         </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {activeInvestments.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={7}
+                            colSpan={8}
                             className="py-8 text-center text-muted-foreground"
                           >
                             No active investments found
@@ -822,12 +843,349 @@ export default function AdminDashboard() {
                             <td className="py-3 px-4">
                               {new Date(inv.createdAt).toLocaleDateString()}
                             </td>
+                            <td className="py-3 px-4">
+                              {inv.status === "active" && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={async () => {
+                                    if (
+                                      confirm(
+                                        `Terminate this ${
+                                          inv.tier
+                                        } investment of $${inv.amount?.toLocaleString()}? Accrued earnings will be credited, and the investment will be cancelled.`
+                                      )
+                                    ) {
+                                      try {
+                                        const res =
+                                          await apiClient.terminateInvestment(
+                                            inv._id
+                                          );
+                                        toast({
+                                          title: "Investment terminated",
+                                          description: `Credited $${Number(
+                                            res?.earningsCredited || 0
+                                          ).toFixed(
+                                            2
+                                          )} in earnings to user balance`,
+                                        });
+                                        fetchAdminData();
+                                      } catch (e) {
+                                        toast({
+                                          title: "Termination failed",
+                                          description: "Please try again",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  Terminate
+                                </Button>
+                              )}
+                            </td>
                           </tr>
                         ))
                       )}
                     </tbody>
                   </table>
                 </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold">Investments</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Track all users' investments
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <input
+                      type="text"
+                      placeholder="Search by user email"
+                      value={invEmailSearch}
+                      onChange={(e) => {
+                        setInvEmailSearch(e.target.value);
+                        setInvPage(1);
+                      }}
+                      className="border rounded px-3 py-2 text-sm w-full sm:w-[220px]"
+                    />
+                    <Select
+                      defaultValue={invStatusFilter}
+                      onValueChange={(v) => {
+                        setInvStatusFilter(v as any);
+                        setInvPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      defaultValue={invAssetFilter}
+                      onValueChange={(v) => {
+                        setInvAssetFilter(v as any);
+                        setInvPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue placeholder="Asset" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All assets</SelectItem>
+                        <SelectItem value="BTC">BTC</SelectItem>
+                        <SelectItem value="ETH">ETH</SelectItem>
+                        <SelectItem value="SOL">SOL</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      defaultValue={invTierFilter}
+                      onValueChange={(v) => {
+                        setInvTierFilter(v as any);
+                        setInvPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Tier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All tiers</SelectItem>
+                        <SelectItem value="Silver">Silver</SelectItem>
+                        <SelectItem value="Gold">Gold</SelectItem>
+                        <SelectItem value="Platinum">Platinum</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {(() => {
+                  const list = (
+                    allInvestments.length ? allInvestments : activeInvestments
+                  ) as any[];
+                  const filtered = list
+                    .filter((i) =>
+                      invStatusFilter === "all"
+                        ? true
+                        : (i.status || "").toLowerCase() === invStatusFilter
+                    )
+                    .filter((i) =>
+                      invEmailSearch
+                        ? (i.userId?.email || "")
+                            .toLowerCase()
+                            .includes(invEmailSearch.toLowerCase())
+                        : true
+                    )
+                    .filter((i) =>
+                      invAssetFilter === "all"
+                        ? true
+                        : (i.asset || "") === invAssetFilter
+                    )
+                    .filter((i) =>
+                      invTierFilter === "all"
+                        ? true
+                        : (i.tier || "") === invTierFilter
+                    );
+
+                  const totalPages = Math.max(
+                    1,
+                    Math.ceil(filtered.length / invPageSize)
+                  );
+                  const page = Math.min(invPage, totalPages);
+                  const paged = filtered.slice(
+                    (page - 1) * invPageSize,
+                    page * invPageSize
+                  );
+                  return (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                                User
+                              </th>
+                              <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                                Tier
+                              </th>
+                              <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                                Asset
+                              </th>
+                              <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                                Amount
+                              </th>
+                              <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                                Period
+                              </th>
+                              <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                                APR
+                              </th>
+                              <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                                Status
+                              </th>
+                              <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                                Created
+                              </th>
+                              <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paged.length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={9}
+                                  className="py-8 text-center text-muted-foreground"
+                                >
+                                  No investments
+                                </td>
+                              </tr>
+                            ) : (
+                              paged.map((inv) => (
+                                <tr
+                                  key={inv._id}
+                                  className="border-b hover:bg-muted/50"
+                                >
+                                  <td className="py-3 px-4">
+                                    {inv.userId?.email || "Unknown"}
+                                  </td>
+                                  <td className="py-3 px-4">{inv.tier}</td>
+                                  <td className="py-3 px-4">{inv.asset}</td>
+                                  <td className="py-3 px-4 font-mono">
+                                    ${inv.amount?.toLocaleString()}
+                                  </td>
+                                  <td className="py-3 px-4">{inv.period}d</td>
+                                  <td className="py-3 px-4">
+                                    {inv.apr ?? "-"}
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <Badge
+                                      variant={
+                                        inv.status === "active"
+                                          ? "secondary"
+                                          : inv.status === "completed"
+                                          ? "default"
+                                          : "destructive"
+                                      }
+                                    >
+                                      {inv.status}
+                                    </Badge>
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    {new Date(
+                                      inv.createdAt
+                                    ).toLocaleDateString()}
+                                  </td>
+                                  <td className="py-3 px-4 flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setInvDetail(inv);
+                                        setInvDetailOpen(true);
+                                      }}
+                                    >
+                                      View
+                                    </Button>
+                                    {inv.status === "active" && (
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={async () => {
+                                          if (
+                                            confirm(
+                                              `Terminate this ${
+                                                inv.tier
+                                              } investment of $${inv.amount?.toLocaleString()}? Accrued earnings will be credited, and the investment will be cancelled.`
+                                            )
+                                          ) {
+                                            try {
+                                              const res =
+                                                await apiClient.terminateInvestment(
+                                                  inv._id
+                                                );
+                                              toast({
+                                                title: "Investment terminated",
+                                                description: `Credited $${Number(
+                                                  res?.earningsCredited || 0
+                                                ).toFixed(
+                                                  2
+                                                )} in earnings to user balance`,
+                                              });
+                                              fetchAdminData();
+                                            } catch (e) {
+                                              toast({
+                                                title: "Termination failed",
+                                                description: "Please try again",
+                                                variant: "destructive",
+                                              });
+                                            }
+                                          }
+                                        }}
+                                      >
+                                        Terminate
+                                      </Button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex items-center justify-between mt-4">
+                        <span className="text-sm text-muted-foreground">
+                          Page {page} of{" "}
+                          {Math.max(
+                            1,
+                            Math.ceil(filtered.length / invPageSize)
+                          )}{" "}
+                          • {filtered.length} investments
+                        </span>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page <= 1}
+                            onClick={() =>
+                              setInvPage((p) => Math.max(1, p - 1))
+                            }
+                          >
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={
+                              page >=
+                              Math.max(
+                                1,
+                                Math.ceil(filtered.length / invPageSize)
+                              )
+                            }
+                            onClick={() =>
+                              setInvPage((p) =>
+                                Math.min(
+                                  Math.max(
+                                    1,
+                                    Math.ceil(filtered.length / invPageSize)
+                                  ),
+                                  p + 1
+                                )
+                              )
+                            }
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </Card>
           </TabsContent>
@@ -1184,6 +1542,75 @@ export default function AdminDashboard() {
       <Footer />
 
       {/* KYC Detail Viewer */}
+      {/* Investment Detail Viewer */}
+      <Dialog open={invDetailOpen} onOpenChange={setInvDetailOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Investment Details</DialogTitle>
+            <DialogDescription>Inspect a user's investment</DialogDescription>
+          </DialogHeader>
+          {invDetail ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">User</span>
+                <span>{invDetail.userId?.email || "Unknown"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Tier</span>
+                <span>{invDetail.tier}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Asset</span>
+                <span>{invDetail.asset}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Amount</span>
+                <span className="font-mono">
+                  ${invDetail.amount?.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Period</span>
+                <span>{invDetail.period} days</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">APR</span>
+                <span>{invDetail.apr ?? "-"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status</span>
+                <Badge
+                  variant={
+                    invDetail.status === "active"
+                      ? "secondary"
+                      : invDetail.status === "completed"
+                      ? "default"
+                      : "destructive"
+                  }
+                >
+                  {invDetail.status}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Created</span>
+                <span>{new Date(invDetail.createdAt).toLocaleString()}</span>
+              </div>
+              {invDetail.completedAt && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Completed</span>
+                  <span>
+                    {new Date(invDetail.completedAt).toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-6 text-center text-muted-foreground">
+              No details
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog open={kycViewOpen} onOpenChange={setKycViewOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

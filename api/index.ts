@@ -1691,6 +1691,88 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    // Admin: Terminate an active investment early and credit accrued earnings
+    if (
+      req.url?.startsWith("/api/admin/investments/") &&
+      req.url?.endsWith("/terminate") &&
+      req.method === "PUT"
+    ) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const parts = req.url.split("/");
+        // /api/admin/investments/:id/terminate
+        const id = parts[parts.length - 2];
+        const inv = await Investment.findById(id);
+        if (!inv)
+          return res.status(404).json({ message: "Investment not found" });
+        if (inv.status !== "active") {
+          return res
+            .status(400)
+            .json({ message: "Only active investments can be terminated" });
+        }
+
+        const now = new Date();
+        const start = inv.createdAt ? new Date(inv.createdAt) : now;
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const rawDays = Math.floor(
+          (now.getTime() - start.getTime()) / msPerDay
+        );
+        const elapsedDays = Math.max(
+          0,
+          Math.min(Number(inv.period || 0), rawDays)
+        );
+        const apr = Number(inv.apr || aprFromTier(inv.tier));
+        const dailyRate = apr / 365; // matches frontend/server convention
+        const earnings = Number(inv.amount || 0) * dailyRate * elapsedDays;
+
+        // Credit accrued earnings to user's available balance in the same asset
+        let bal = await AssetBalance.findOne({ userId: inv.userId });
+        if (!bal) {
+          bal = new AssetBalance({
+            userId: inv.userId,
+            bitcoin: 0,
+            ethereum: 0,
+            solana: 0,
+            totalBalance: 0,
+          });
+        }
+        const field = getAssetField(inv.asset, bal);
+        if (!field) {
+          return res
+            .status(400)
+            .json({ message: "Invalid asset on investment" });
+        }
+        // @ts-ignore dynamic index
+        bal[field] = Number(bal[field] || 0) + earnings;
+        bal.totalBalance = Number(bal.totalBalance || 0) + earnings;
+        await bal.save();
+
+        // Mark investment as cancelled to prevent future settlement
+        inv.status = "cancelled";
+        inv.updatedAt = now;
+        inv.completedAt = now;
+        await inv.save();
+
+        return res.status(200).json({
+          message: "Investment terminated",
+          investmentId: inv._id,
+          earningsCredited: earnings,
+          elapsedDays,
+        });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
     // Admin: Update Withdrawal Request
     if (
       req.url?.startsWith("/api/admin/withdrawal-requests/") &&

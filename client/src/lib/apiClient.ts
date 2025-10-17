@@ -173,6 +173,25 @@ class ApiClient {
     return this.handleResponse(response);
   }
 
+  async getAllInvestmentsAll() {
+    const response = await fetch(`${API_BASE_URL}/admin/investments?all=1`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async terminateInvestment(investmentId: string) {
+    const response = await fetch(
+      `${API_BASE_URL}/admin/investments/${investmentId}/terminate`,
+      {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({}),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
   async updateUserKYC(
     userId: string,
     status: "approved" | "rejected" | "pending"
