@@ -433,9 +433,9 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground mb-4">
             Every Friday, if you activate Earn x2 and make a verified deposit
             that is up to 50% of your last deposit, your APR is doubled for
-            investments you make today. If you don’t have any funds yet, you’ll
-            be directed to make a deposit first. Tier minimums may be waived
-            today when qualifying.
+            investments you make today and tier minimums are waived. If you
+            don’t have any funds yet, you’ll be directed to make a deposit
+            first.
           </p>
           <div className="flex justify-end gap-2">
             <Button

@@ -437,8 +437,8 @@ export function Navbar() {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Every Friday, if you activate Earn x2 and make a verified deposit
-            that is up to 50% of your last deposit, you can invest with double
-            returns today. Tier minimums may be waived today when qualifying.
+            that is up to 50% of your last deposit, your APR is doubled for
+            today’s investments and tier minimums are waived.
           </p>
         </DialogContent>
       </Dialog>
