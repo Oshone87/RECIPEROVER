@@ -16,6 +16,9 @@ import Dashboard from "@/pages/Dashboard";
 import Admin from "@/pages/Admin";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
+import FAQ from "@/pages/FAQ";
+import Contact from "@/pages/Contact";
+import Terms from "@/pages/Terms";
 
 function Router() {
   return (
@@ -25,6 +28,9 @@ function Router() {
       <Route path="/signup" component={Signup} />
       <Route path="/kyc" component={KYC} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/faq" component={FAQ} />
+      <Route path="/contact" component={Contact} />
+      <Route path="/terms" component={Terms} />
       <Route path="/admin" component={Admin} />
       <Route path="/admin-login" component={AdminLogin} />
       <Route path="/admin-dashboard" component={AdminDashboard} />

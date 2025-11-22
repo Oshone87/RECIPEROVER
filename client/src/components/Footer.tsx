@@ -24,9 +24,9 @@ export function Footer() {
           <div className="space-y-4">
             <h4 className="text-sm font-semibold">Support</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-foreground transition-colors">FAQ</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Contact Us</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Terms of Service</a></li>
+              <li><Link href="/faq"><span className="hover:text-foreground transition-colors cursor-pointer">FAQ</span></Link></li>
+              <li><Link href="/contact"><span className="hover:text-foreground transition-colors cursor-pointer">Contact Us</span></Link></li>
+              <li><Link href="/terms"><span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span></Link></li>
             </ul>
           </div>
 
