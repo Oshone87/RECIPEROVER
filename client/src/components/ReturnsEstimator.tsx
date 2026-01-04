@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
+import FixedDurationSelector from "@/components/FixedDurationSelector";
 
 const TIERS = {
   silver: { label: "Silver", min: 1000, apr: 0.06 },
@@ -63,15 +63,13 @@ export function ReturnsEstimator() {
         </div>
 
         <div className="space-y-2">
-          <Label>Period: {days} days</Label>
-          <Slider
-            value={[days]}
-            onValueChange={([value]) => setDays(value)}
-            min={30}
-            max={365}
-            step={1}
-            data-testid="slider-period"
+          <FixedDurationSelector
+            value={days}
+            onChange={(value) => setDays(value)}
+            options={[7, 14, 30, 60]}
+            label="Choose your earning cycle"
           />
+          <div className="text-sm text-muted-foreground">Selected: {days} days</div>
         </div>
 
         <div className="pt-4 border-t space-y-3">

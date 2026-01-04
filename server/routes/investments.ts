@@ -20,8 +20,8 @@ router.get("/", authenticate, async (req: AuthRequest, res) => {
       amount: inv.amount,
       apr: inv.apr,
       period: inv.period,
-      startDate: inv.startDate.toISOString(),
-      endDate: inv.endDate.toISOString(),
+      startDate: inv.startDate?.toISOString() || new Date().toISOString(),
+      endDate: inv.endDate?.toISOString() || new Date().toISOString(),
       earned: inv.totalReturns || 0, // Map totalReturns to earned
       status: inv.status,
       progress: inv.dailyReturns || 0, // Map dailyReturns to progress
@@ -135,8 +135,8 @@ router.get("/:id", authenticate, async (req: AuthRequest, res) => {
       amount: investment.amount,
       apr: investment.apr,
       period: investment.period,
-      startDate: investment.startDate.toISOString(),
-      endDate: investment.endDate.toISOString(),
+      startDate: investment.startDate?.toISOString() || new Date().toISOString(),
+      endDate: investment.endDate?.toISOString() || new Date().toISOString(),
       earned: investment.totalReturns || 0,
       status: investment.status,
       progress: investment.dailyReturns || 0,

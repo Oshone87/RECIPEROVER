@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
+import FixedDurationSelector from "@/components/FixedDurationSelector";
 import { Card } from "@/components/ui/card";
 import { TierCard } from "./TierCard";
 import { SiBitcoin, SiEthereum } from "react-icons/si";
@@ -467,17 +467,15 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
           {step === 4 && !needsDeposit && (
             <div className="space-y-6">
               <div className="space-y-4">
-                <h3 className="font-semibold">Select Period</h3>
+                <h3 className="font-semibold">Choose your earning cycle</h3>
                 <div className="space-y-2">
-                  <Label>Period: {period} days</Label>
-                  <Slider
-                    value={[period]}
-                    onValueChange={([value]) => setPeriod(value)}
-                    min={30}
-                    max={365}
-                    step={1}
-                    data-testid="slider-investment-period"
-                  />
+                    <FixedDurationSelector
+                      value={period}
+                      onChange={(value) => setPeriod(value)}
+                      options={[7, 14, 30, 60]}
+                      label="Choose your earning cycle"
+                    />
+                    <div className="text-sm text-muted-foreground">Selected: {period} days</div>
                 </div>
               </div>
 
@@ -532,17 +530,15 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
           {step === 5 && needsDeposit && (
             <div className="space-y-6">
               <div className="space-y-4">
-                <h3 className="font-semibold">Select Period</h3>
+                <h3 className="font-semibold">Choose your earning cycle</h3>
                 <div className="space-y-2">
-                  <Label>Period: {period} days</Label>
-                  <Slider
-                    value={[period]}
-                    onValueChange={([value]) => setPeriod(value)}
-                    min={30}
-                    max={365}
-                    step={1}
-                    data-testid="slider-investment-period"
-                  />
+                    <FixedDurationSelector
+                      value={period}
+                      onChange={(value) => setPeriod(value)}
+                      options={[7, 14, 30, 60]}
+                      label="Choose your earning cycle"
+                    />
+                    <div className="text-sm text-muted-foreground">Selected: {period} days</div>
                 </div>
               </div>
 
