@@ -40,8 +40,9 @@ export function DailyProgressTracker({
   // Calculate daily earnings
   // APR is stored as 24, 30, 36 which represents 2400%, 3000%, 3600%
   // So we multiply by 100 to get the actual percentage value
-  const dailyRate = (investment.amount * investment.apr) / 365;
-  const todaysEarning = investment.status === "active" ? dailyRate : 0;
+  const dailyRateDollars = (investment.amount * investment.apr) / 365;
+  const dailyRatePercentage = investment.apr / 365; // Daily percentage rate
+  const todaysEarning = investment.status === "active" ? dailyRateDollars : 0;
   const totalGrowth = investment.earned || 0;
   
   // Progress percentage
@@ -72,7 +73,7 @@ export function DailyProgressTracker({
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-muted/30 rounded-lg p-2">
             <p className="text-xs text-muted-foreground mb-1">Daily Rate</p>
-            <p className="text-sm font-bold text-green-600">${dailyRate.toFixed(2)}</p>
+            <p className="text-sm font-bold text-green-600">{dailyRatePercentage.toFixed(2)}%</p>
           </div>
           <div className="bg-muted/30 rounded-lg p-2">
             <p className="text-xs text-muted-foreground mb-1">Today</p>
@@ -147,7 +148,7 @@ export function DailyProgressTracker({
                   Daily Rate
                 </p>
                 <p className="text-xl sm:text-2xl font-bold text-green-700 dark:text-green-300">
-                  ${dailyRate.toFixed(2)}
+                  {dailyRatePercentage.toFixed(2)}%
                 </p>
               </div>
             </div>
