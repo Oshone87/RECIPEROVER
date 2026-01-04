@@ -126,159 +126,23 @@ export function InvestmentGrowthChart() {
 
   return (
     <div className="space-y-6">
-      {/* Header with controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-bold">Investment Growth Tracker</h2>
-          <p className="text-sm text-muted-foreground">
-            Monitor your investment performance in real-time
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {activeInvestments.length > 1 && (
-            <>
-              <Button
-                variant={showAllInvestments ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowAllInvestments(!showAllInvestments)}
-                className="flex items-center gap-2"
-              >
-                {showAllInvestments ? (
-                  <Eye className="h-4 w-4" />
-                ) : (
-                  <EyeOff className="h-4 w-4" />
-                )}
-                {showAllInvestments ? "Show All" : "Individual"}
-              </Button>
-
-              {!showAllInvestments && (
-                <select
-                  value={selectedInvestment || ""}
-                  onChange={(e) =>
-                    setSelectedInvestment(e.target.value || null)
-                  }
-                  className="px-3 py-2 border rounded-md text-sm bg-background"
-                >
-                  <option value="">Select Investment</option>
-                  {activeInvestments.map((inv) => (
-                    <option key={inv.id} value={inv.id}>
-                      {inv.tier} - {inv.asset} (${inv.amount.toLocaleString()})
-                    </option>
-                  ))}
-                </select>
-              )}
-            </>
-          )}
-        </div>
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-bold">Investment Growth Tracker</h2>
+        <p className="text-sm text-muted-foreground">
+          Monitor your investment performance in real-time
+        </p>
       </div>
 
-      {/* Overall stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Growth</p>
-              <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                +${getTotalGrowth().toFixed(2)}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-              <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Growth Rate</p>
-              <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                +{getTotalPercentage().toFixed(2)}%
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center">
-              <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Active Investments
-              </p>
-              <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                {activeInvestments.length}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Investment cards */}
+      {/* Investment cards with Daily Progress Tracker only */}
       <div className="space-y-4">
         {getDisplayInvestments().map((investment) => {
-          const growthData = generateGrowthData(investment);
-          const latestGrowth = growthData[growthData.length - 1];
-          const daysLeft = Math.max(
-            0,
-            Math.ceil(
-              (new Date(investment.endDate).getTime() - new Date().getTime()) /
-                (1000 * 60 * 60 * 24)
-            )
-          );
-
           return (
-            <Card key={investment.id} className="overflow-hidden">
-              {/* Investment header */}
-              <div className="p-4 sm:p-6 border-b bg-gradient-to-r from-primary/5 to-secondary/5">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="font-semibold">
-                        {investment.tier}
-                      </Badge>
-                      <span className="text-lg font-bold">
-                        {investment.asset}
-                      </span>
-                      <Badge variant="secondary">{investment.apr}% APR</Badge>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="h-4 w-4" />
-                        Initial: ${investment.amount.toLocaleString()}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        {daysLeft} days remaining
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      +${(investment.earned || 0).toFixed(2)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Current Earnings
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Daily Progress Tracker - replaces the graph */}
-              <div className="p-4 sm:p-6">
-                <DailyProgressTracker 
-                  investment={investment}
-                  compact={false}
-                />
-              </div>
-            </Card>
+            <DailyProgressTracker 
+              key={investment.id}
+              investment={investment}
+              compact={false}
+            />
           );
         })}
       </div>
