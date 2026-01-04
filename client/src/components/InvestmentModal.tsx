@@ -72,7 +72,8 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
   const [tier, setTier] = useState<keyof typeof TIERS>("gold");
   const [amount, setAmount] = useState(5000);
   const [asset, setAsset] = useState("BTC");
-  const [period, setPeriod] = useState(90);
+  const [period, setPeriod] = useState(30);
+  const [hasSelectedPeriod, setHasSelectedPeriod] = useState(false);
   const [walletCopied, setWalletCopied] = useState(false);
   const [showDepositStep, setShowDepositStep] = useState(false);
   const [transactionHash, setTransactionHash] = useState("");
@@ -471,11 +472,14 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                 <div className="space-y-2">
                     <FixedDurationSelector
                       value={period}
-                      onChange={(value) => setPeriod(value)}
-                      options={[7, 14, 30, 60]}
-                      label="Choose your earning cycle"
-                    />
-                    <div className="text-sm text-muted-foreground">Selected: {period} days</div>
+                    onChange={(value) => {
+                      setPeriod(value);
+                      setHasSelectedPeriod(true);
+                    }}
+                    options={[7, 14, 30, 60]}
+                    label="Choose your earning cycle"
+                    showSelected={hasSelectedPeriod}
+                  />
                 </div>
               </div>
 
@@ -534,11 +538,14 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
                 <div className="space-y-2">
                     <FixedDurationSelector
                       value={period}
-                      onChange={(value) => setPeriod(value)}
+                      onChange={(value) => {
+                        setPeriod(value);
+                        setHasSelectedPeriod(true);
+                      }}
                       options={[7, 14, 30, 60]}
                       label="Choose your earning cycle"
+                      showSelected={hasSelectedPeriod}
                     />
-                    <div className="text-sm text-muted-foreground">Selected: {period} days</div>
                 </div>
               </div>
 

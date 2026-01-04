@@ -14,7 +14,8 @@ const TIERS = {
 export function ReturnsEstimator() {
   const [tier, setTier] = useState<keyof typeof TIERS>("silver");
   const [amount, setAmount] = useState(TIERS.silver.min);
-  const [days, setDays] = useState(90);
+  const [days, setDays] = useState(30);
+  const [hasSelectedDuration, setHasSelectedDuration] = useState(false);
 
   const { interest, total } = useMemo(() => {
     const apr = TIERS[tier].apr;
@@ -65,11 +66,14 @@ export function ReturnsEstimator() {
         <div className="space-y-2">
           <FixedDurationSelector
             value={days}
-            onChange={(value) => setDays(value)}
+            onChange={(value) => {
+              setDays(value);
+              setHasSelectedDuration(true);
+            }}
             options={[7, 14, 30, 60]}
             label="Choose your earning cycle"
+            showSelected={hasSelectedDuration}
           />
-          <div className="text-sm text-muted-foreground">Selected: {days} days</div>
         </div>
 
         <div className="pt-4 border-t space-y-3">

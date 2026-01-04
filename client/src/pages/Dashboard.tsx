@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
+  Target,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInvestment } from "@/contexts/InvestmentContext";
@@ -39,6 +40,8 @@ import { SiBitcoin, SiEthereum } from "react-icons/si";
 import { TbCurrencySolana } from "react-icons/tb";
 import { apiClient } from "@/lib/apiClient";
 import { TransactionDetailsModal } from "@/components/TransactionDetailsModal";
+import { DailyProgressTracker } from "@/components/DailyProgressTracker";
+import { TabsContent } from "@/components/ui/tabs";
 // Removed offer day banner imports per new UX
 
 export default function Dashboard() {
@@ -61,6 +64,7 @@ export default function Dashboard() {
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState("transactions");
 
   // Real user data from API
   const [realBalances, setRealBalances] = useState({
@@ -299,106 +303,148 @@ export default function Dashboard() {
             <InvestmentGrowthChart />
           </Card>
 
-          {/* Transaction History */}
+          {/* Tabs for Transaction History and Investment History */}
           <Card className="p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">
-              Transaction History
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[500px]">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-muted-foreground">
-                      Date
-                    </th>
-                    <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-muted-foreground">
-                      Type
-                    </th>
-                    <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-muted-foreground">
-                      Asset
-                    </th>
-                    <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-muted-foreground">
-                      Amount
-                    </th>
-                    <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-muted-foreground">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {realTransactions.length > 0 ? (
-                    realTransactions.map((tx: any) => (
-                      <tr
-                        key={tx.id}
-                        className="border-b hover-elevate"
-                        data-testid={`row-transaction-${tx.id}`}
-                      >
-                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm">
-                          {new Date(tx.date).toLocaleDateString()}
-                        </td>
-                        <td className="py-2 sm:py-3 px-2 sm:px-4">
-                          <div className="flex items-center gap-1 sm:gap-2">
-                            {tx.type === "deposit" ? (
-                              <ArrowDownRight className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
-                            ) : (
-                              <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
-                            )}
-                            <span className="text-xs sm:text-sm capitalize">
-                              {tx.type}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-mono">
-                          {tx.asset}
-                        </td>
-                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-mono text-right">
-                          {tx.type === "deposit" ? "+" : "-"}$
-                          {tx.amount.toLocaleString()}
-                        </td>
-                        <td className="py-2 sm:py-3 px-2 sm:px-4">
-                          <Badge
-                            variant={
-                              tx.status === "completed"
-                                ? "default"
-                                : tx.status === "pending" ||
-                                  tx.status === "approved"
-                                ? "secondary"
-                                : "destructive"
-                            }
-                            className="text-xs capitalize"
-                          >
-                            {tx.status}
-                          </Badge>
-                          <div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="px-2 h-7 mt-1 text-xs"
-                              onClick={() => {
-                                setSelectedTx(tx);
-                                setDetailsOpen(true);
-                              }}
-                            >
-                              View
-                            </Button>
-                          </div>
-                        </td>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h2 className="text-lg sm:text-xl font-bold">
+                  {activeTab === "transactions" ? "Transaction History" : "Investment History"}
+                </h2>
+                <TabsList className="grid w-full sm:w-auto grid-cols-2">
+                  <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                  <TabsTrigger value="investments">Investments</TabsTrigger>
+                </TabsList>
+              </div>
+
+              {/* Transaction History Tab */}
+              <TabsContent value="transactions" className="mt-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[500px]">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-muted-foreground">
+                          Date
+                        </th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-muted-foreground">
+                          Type
+                        </th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-muted-foreground">
+                          Asset
+                        </th>
+                        <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-muted-foreground">
+                          Amount
+                        </th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-muted-foreground">
+                          Status
+                        </th>
                       </tr>
+                    </thead>
+                    <tbody>
+                      {realTransactions.length > 0 ? (
+                        realTransactions.map((tx: any) => (
+                          <tr
+                            key={tx.id}
+                            className="border-b hover-elevate"
+                            data-testid={`row-transaction-${tx.id}`}
+                          >
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm">
+                              {new Date(tx.date).toLocaleDateString()}
+                            </td>
+                            <td className="py-2 sm:py-3 px-2 sm:px-4">
+                              <div className="flex items-center gap-1 sm:gap-2">
+                                {tx.type === "deposit" ? (
+                                  <ArrowDownRight className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
+                                ) : (
+                                  <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
+                                )}
+                                <span className="text-xs sm:text-sm capitalize">
+                                  {tx.type}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-mono">
+                              {tx.asset}
+                            </td>
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-mono text-right">
+                              {tx.type === "deposit" ? "+" : "-"}$
+                              {tx.amount.toLocaleString()}
+                            </td>
+                            <td className="py-2 sm:py-3 px-2 sm:px-4">
+                              <Badge
+                                variant={
+                                  tx.status === "completed"
+                                    ? "default"
+                                    : tx.status === "pending" ||
+                                      tx.status === "approved"
+                                    ? "secondary"
+                                    : "destructive"
+                                }
+                                className="text-xs capitalize"
+                              >
+                                {tx.status}
+                              </Badge>
+                              <div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="px-2 h-7 mt-1 text-xs"
+                                  onClick={() => {
+                                    setSelectedTx(tx);
+                                    setDetailsOpen(true);
+                                  }}
+                                >
+                                  View
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={5}
+                            className="py-8 text-center text-muted-foreground"
+                          >
+                            No transactions yet. Make your first investment to see
+                            transaction history.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </TabsContent>
+
+              {/* Investment History Tab */}
+              <TabsContent value="investments" className="mt-0">
+                <div className="space-y-4">
+                  {getActiveInvestments().length > 0 ? (
+                    getActiveInvestments().map((investment: any) => (
+                      <DailyProgressTracker 
+                        key={investment.id} 
+                        investment={investment}
+                      />
                     ))
                   ) : (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="py-8 text-center text-muted-foreground"
-                      >
-                        No transactions yet. Make your first investment to see
-                        transaction history.
-                      </td>
-                    </tr>
+                    <div className="py-12 text-center">
+                      <div className="max-w-md mx-auto space-y-4">
+                        <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+                          <Target className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold mb-2">
+                            No Active Investments
+                          </h3>
+                          <p className="text-muted-foreground text-sm">
+                            Create your first investment to start earning daily returns.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </Card>
         </div>
       </div>

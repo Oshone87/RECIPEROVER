@@ -32,6 +32,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/apiClient";
+import { DailyProgressTracker } from "@/components/DailyProgressTracker";
 
 // Types
 interface DatabaseUser {
@@ -1544,63 +1545,89 @@ export default function AdminDashboard() {
       {/* KYC Detail Viewer */}
       {/* Investment Detail Viewer */}
       <Dialog open={invDetailOpen} onOpenChange={setInvDetailOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Investment Details</DialogTitle>
-            <DialogDescription>Inspect a user's investment</DialogDescription>
+            <DialogDescription>Inspect a user's investment with daily progress</DialogDescription>
           </DialogHeader>
           {invDetail ? (
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">User</span>
-                <span>{invDetail.userId?.email || "Unknown"}</span>
+            <div className="space-y-6">
+              {/* Basic Investment Info */}
+              <div className="grid grid-cols-2 gap-3 text-sm pb-4 border-b">
+                <div>
+                  <span className="text-muted-foreground block mb-1">User</span>
+                  <span className="font-mono text-xs">{invDetail.userId?.email || "Unknown"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block mb-1">Created</span>
+                  <span className="text-xs">{new Date(invDetail.createdAt).toLocaleString()}</span>
+                </div>
+                {invDetail.completedAt && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground block mb-1">Completed</span>
+                    <span className="text-xs">
+                      {new Date(invDetail.completedAt).toLocaleString()}
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Tier</span>
-                <span>{invDetail.tier}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Asset</span>
-                <span>{invDetail.asset}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Amount</span>
-                <span className="font-mono">
-                  ${invDetail.amount?.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Period</span>
-                <span>{invDetail.period} days</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">APR</span>
-                <span>{invDetail.apr ?? "-"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Status</span>
-                <Badge
-                  variant={
-                    invDetail.status === "active"
-                      ? "secondary"
-                      : invDetail.status === "completed"
-                      ? "default"
-                      : "destructive"
-                  }
-                >
-                  {invDetail.status}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Created</span>
-                <span>{new Date(invDetail.createdAt).toLocaleString()}</span>
-              </div>
-              {invDetail.completedAt && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Completed</span>
-                  <span>
-                    {new Date(invDetail.completedAt).toLocaleString()}
-                  </span>
+
+              {/* Daily Progress Tracker */}
+              {invDetail.status === "active" && (
+                <DailyProgressTracker 
+                  investment={{
+                    id: invDetail._id,
+                    tier: invDetail.tier,
+                    asset: invDetail.asset,
+                    amount: invDetail.amount,
+                    apr: invDetail.apr || 0,
+                    period: invDetail.period,
+                    startDate: invDetail.startDate || invDetail.createdAt,
+                    endDate: invDetail.endDate || new Date(new Date(invDetail.createdAt).getTime() + invDetail.period * 24 * 60 * 60 * 1000).toISOString(),
+                    earned: invDetail.earned || 0,
+                    status: invDetail.status,
+                    progress: invDetail.progress
+                  }}
+                />
+              )}
+
+              {/* Fallback for non-active investments */}
+              {invDetail.status !== "active" && (
+                <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tier</span>
+                    <span className="font-semibold">{invDetail.tier}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Asset</span>
+                    <span className="font-semibold">{invDetail.asset}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Amount</span>
+                    <span className="font-mono font-semibold">
+                      ${invDetail.amount?.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Period</span>
+                    <span>{invDetail.period} days</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">APR</span>
+                    <span>{invDetail.apr ?? "-"}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge
+                      variant={
+                        invDetail.status === "completed"
+                          ? "default"
+                          : "destructive"
+                      }
+                    >
+                      {invDetail.status}
+                    </Badge>
+                  </div>
                 </div>
               )}
             </div>

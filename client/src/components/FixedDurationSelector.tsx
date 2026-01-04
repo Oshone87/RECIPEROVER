@@ -7,6 +7,7 @@ interface Props {
   options?: number[];
   label?: string;
   className?: string;
+  showSelected?: boolean;
 }
 
 export function FixedDurationSelector({
@@ -15,6 +16,7 @@ export function FixedDurationSelector({
   options = [7, 14, 30, 60],
   label = "Choose your earning cycle",
   className = "",
+  showSelected = true,
 }: Props) {
   return (
     <div className={className}>
@@ -40,6 +42,9 @@ export function FixedDurationSelector({
           );
         })}
       </div>
+      {showSelected && (
+        <div className="text-sm text-muted-foreground mt-2">Selected: {value} days</div>
+      )}
     </div>
   );
 }
