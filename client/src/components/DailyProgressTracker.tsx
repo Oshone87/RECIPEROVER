@@ -38,7 +38,9 @@ export function DailyProgressTracker({
   const daysRemaining = Math.max(0, totalDays - daysCompleted);
   
   // Calculate daily earnings
-  const dailyRate = (investment.amount * (investment.apr / 100)) / 365;
+  // APR is stored as 24, 30, 36 which represents 2400%, 3000%, 3600%
+  // So we multiply by 100 to get the actual percentage value
+  const dailyRate = (investment.amount * investment.apr) / 365;
   const todaysEarning = investment.status === "active" ? dailyRate : 0;
   const totalGrowth = investment.earned || 0;
   
