@@ -185,28 +185,6 @@ export function DailyProgressTracker({
             </div>
           </Card>
         </div>
-
-        {/* Investment Details Summary */}
-        <div className="pt-4 border-t grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <span className="text-muted-foreground">Principal:</span>
-            <span className="ml-2 font-semibold">${investment.amount.toLocaleString()}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">APR:</span>
-            <span className="ml-2 font-semibold">{investment.apr}%</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Expected Total:</span>
-            <span className="ml-2 font-semibold text-primary">
-              ${(investment.amount + (dailyRate * totalDays)).toFixed(2)}
-            </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Maturity:</span>
-            <span className="ml-2 font-semibold">{endDate.toLocaleDateString()}</span>
-          </div>
-        </div>
       </div>
     </Card>
   );

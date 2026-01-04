@@ -424,15 +424,6 @@ export default function AdminDashboard() {
                 </p>
               </div>
             </div>
-            <Button
-              variant="destructive"
-              onClick={handleClearAllData}
-              className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
-              size="sm"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              <span className="text-sm">Clear All Data</span>
-            </Button>
           </div>
         </div>
       </div>

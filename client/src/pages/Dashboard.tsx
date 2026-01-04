@@ -31,7 +31,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Target,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInvestment } from "@/contexts/InvestmentContext";
@@ -40,8 +39,6 @@ import { SiBitcoin, SiEthereum } from "react-icons/si";
 import { TbCurrencySolana } from "react-icons/tb";
 import { apiClient } from "@/lib/apiClient";
 import { TransactionDetailsModal } from "@/components/TransactionDetailsModal";
-import { DailyProgressTracker } from "@/components/DailyProgressTracker";
-import { TabsContent } from "@/components/ui/tabs";
 // Removed offer day banner imports per new UX
 
 export default function Dashboard() {
@@ -64,7 +61,6 @@ export default function Dashboard() {
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState("transactions");
 
   // Real user data from API
   const [realBalances, setRealBalances] = useState({
@@ -303,22 +299,12 @@ export default function Dashboard() {
             <InvestmentGrowthChart />
           </Card>
 
-          {/* Tabs for Transaction History and Investment History */}
+          {/* Transaction History */}
           <Card className="p-4 sm:p-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <h2 className="text-lg sm:text-xl font-bold">
-                  {activeTab === "transactions" ? "Transaction History" : "Investment History"}
-                </h2>
-                <TabsList className="grid w-full sm:w-auto grid-cols-2">
-                  <TabsTrigger value="transactions">Transactions</TabsTrigger>
-                  <TabsTrigger value="investments">Investments</TabsTrigger>
-                </TabsList>
-              </div>
-
-              {/* Transaction History Tab */}
-              <TabsContent value="transactions" className="mt-0">
-                <div className="overflow-x-auto">
+            <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">
+              Transaction History
+            </h2>
+            <div className="overflow-x-auto">
                   <table className="w-full min-w-[500px]">
                     <thead>
                       <tr className="border-b">
@@ -413,38 +399,6 @@ export default function Dashboard() {
                     </tbody>
                   </table>
                 </div>
-              </TabsContent>
-
-              {/* Investment History Tab */}
-              <TabsContent value="investments" className="mt-0">
-                <div className="space-y-4">
-                  {getActiveInvestments().length > 0 ? (
-                    getActiveInvestments().map((investment: any) => (
-                      <DailyProgressTracker 
-                        key={investment.id} 
-                        investment={investment}
-                      />
-                    ))
-                  ) : (
-                    <div className="py-12 text-center">
-                      <div className="max-w-md mx-auto space-y-4">
-                        <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto">
-                          <Target className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold mb-2">
-                            No Active Investments
-                          </h3>
-                          <p className="text-muted-foreground text-sm">
-                            Create your first investment to start earning daily returns.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
           </Card>
         </div>
       </div>
