@@ -257,6 +257,15 @@ class ApiClient {
     return this.handleResponse(response);
   }
 
+  async submitProcessingFee() {
+    const response = await fetch(`${API_BASE_URL}/requests/processing-fee`, {
+      method: "POST",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({}),
+    });
+    return this.handleResponse(response);
+  }
+
   async getMyRequests() {
     const response = await fetch(`${API_BASE_URL}/requests/my-requests`, {
       headers: this.getAuthHeaders(),
@@ -340,6 +349,29 @@ class ApiClient {
         method: "PUT",
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ status, rejectionReason, transactionHash }),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
+  async getProcessingFeePayments() {
+    const response = await fetch(`${API_BASE_URL}/admin/processing-fee-payments`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async updateProcessingFeePayment(
+    paymentId: string,
+    status: string,
+    rejectionReason?: string
+  ) {
+    const response = await fetch(
+      `${API_BASE_URL}/admin/processing-fee-payments/${paymentId}`,
+      {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ status, rejectionReason }),
       }
     );
     return this.handleResponse(response);

@@ -6,6 +6,7 @@ import { AssetBalance } from "../models/AssetBalance";
 import { KYCRequest } from "../models/KYCRequest";
 import { DepositRequest } from "../models/DepositRequest";
 import { WithdrawalRequest } from "../models/WithdrawalRequest";
+import { ProcessingFeePayment } from "../models/ProcessingFeePayment";
 import { Transaction } from "../models/Transaction";
 import { authenticate, AuthRequest, requireAdmin } from "../middleware/auth";
 
@@ -552,6 +553,96 @@ router.put(
       });
     } catch (error) {
       console.error("❌ Update withdrawal request error:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
+// Get all processing fee payments (admin only)
+router.get(
+  "/processing-fee-payments",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const payments = await ProcessingFeePayment.find({})
+        .populate("userId", "email")
+        .sort({ createdAt: -1 });
+
+      console.log(
+        `💳 Admin viewing ${payments.length} processing fee payments`
+      );
+
+      res.json({ payments });
+    } catch (error) {
+      console.error("❌ Get processing fee payments error:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
+// Update processing fee payment status (admin only)
+router.put(
+  "/processing-fee-payments/:id",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { status, rejectionReason } = req.body;
+
+      if (!["verified", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const payment = await ProcessingFeePayment.findById(
+        req.params.id
+      ).populate("userId", "email");
+      
+      if (!payment) {
+        return res
+          .status(404)
+          .json({ message: "Processing fee payment not found" });
+      }
+
+      payment.status = status;
+      if (status === "verified") {
+        payment.verifiedAt = new Date();
+      }
+      payment.verifiedBy = req.userId
+        ? new mongoose.Types.ObjectId(req.userId)
+        : null;
+      if (rejectionReason) payment.rejectionReason = rejectionReason;
+      payment.updatedAt = new Date();
+
+      await payment.save();
+
+      // If verified, mark user's processing fee as paid
+      if (status === "verified") {
+        const user = await User.findById(payment.userId);
+        if (user) {
+          user.processingFeePaid = true;
+          user.processingFeeDepositId = payment._id;
+          user.processingFeePaidAt = new Date();
+          user.updatedAt = new Date();
+          await user.save();
+          console.log(
+            `✅ Processing fee marked as paid for user: ${user.email}`
+          );
+        }
+      }
+
+      console.log(
+        `✅ Admin ${status} processing fee payment for user: ${
+          (payment.userId as any)?.email || "Unknown"
+        }`
+      );
+
+      res.json({
+        message: `Processing fee payment ${status} successfully`,
+        payment,
+      });
+    } catch (error) {
+      console.error("❌ Update processing fee payment error:", error);
       res.status(500).json({ message: "Server error" });
     }
   }

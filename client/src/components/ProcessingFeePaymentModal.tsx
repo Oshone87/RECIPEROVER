@@ -50,14 +50,7 @@ export function ProcessingFeePaymentModal({
     setIsSubmitting(true);
 
     try {
-      await apiClient.submitDeposit({
-        amount: PROCESSING_FEE_AMOUNT,
-        asset: "BTC",
-        transactionHash: "",
-        walletAddress: "",
-        paymentMethod: "crypto",
-        notes: "PROCESSING FEE PAYMENT - Withdrawal activation fee",
-      });
+      await apiClient.submitProcessingFee();
 
       toast({
         title: "Processing Fee Submitted Successfully",

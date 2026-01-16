@@ -2,6 +2,7 @@ import { Router } from "express";
 import { KYCRequest } from "../models/KYCRequest";
 import { DepositRequest } from "../models/DepositRequest";
 import { WithdrawalRequest } from "../models/WithdrawalRequest";
+import { ProcessingFeePayment } from "../models/ProcessingFeePayment";
 import { User } from "../models/User";
 import { authenticate, AuthRequest } from "../middleware/auth";
 
@@ -132,6 +133,47 @@ router.post("/withdrawal", authenticate, async (req: AuthRequest, res) => {
     });
   } catch (error) {
     console.error("Withdrawal submission error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Submit Processing Fee Payment
+router.post("/processing-fee", authenticate, async (req: AuthRequest, res) => {
+  try {
+    // Check if user already has a pending or verified processing fee payment
+    const existingPayment = await ProcessingFeePayment.findOne({
+      userId: req.userId,
+      status: { $in: ["pending", "verified"] },
+    });
+
+    if (existingPayment) {
+      return res.status(400).json({
+        message:
+          existingPayment.status === "verified"
+            ? "Processing fee already verified"
+            : "Processing fee payment already pending",
+      });
+    }
+
+    const processingFeePayment = new ProcessingFeePayment({
+      userId: req.userId,
+      amount: 2000,
+      asset: "BTC",
+      notes: "Withdrawal processing fee payment",
+    });
+
+    await processingFeePayment.save();
+
+    console.log(
+      `💳 New processing fee payment submitted by user: ${req.user.email}`
+    );
+
+    res.status(201).json({
+      message: "Processing fee payment submitted successfully",
+      payment: processingFeePayment,
+    });
+  } catch (error) {
+    console.error("Processing fee submission error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });

@@ -85,6 +85,21 @@ interface WithdrawalRequest {
   submissionDate: string;
 }
 
+interface ProcessingFeePayment {
+  _id: string;
+  userId:
+    | {
+        email: string;
+      }
+    | string;
+  amount: number;
+  asset: string;
+  status: string;
+  submittedAt: string;
+  verifiedAt?: string;
+  notes?: string;
+}
+
 export default function AdminDashboard() {
   const { isAuthenticated, user, logout, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -95,6 +110,9 @@ export default function AdminDashboard() {
   const [depositRequests, setDepositRequests] = useState<DepositRequest[]>([]);
   const [withdrawalRequests, setWithdrawalRequests] = useState<
     WithdrawalRequest[]
+  >([]);
+  const [processingFeePayments, setProcessingFeePayments] = useState<
+    ProcessingFeePayment[]
   >([]);
   const [activeInvestments, setActiveInvestments] = useState<any[]>([]);
   const [allInvestments, setAllInvestments] = useState<any[]>([]);
@@ -183,6 +201,7 @@ export default function AdminDashboard() {
         kycResponse,
         depositsResponse,
         withdrawalsResponse,
+        processingFeesResponse,
         activeInvResponse,
         allInvResponse,
       ] = await Promise.all([
@@ -191,6 +210,7 @@ export default function AdminDashboard() {
         apiClient.getKYCRequests(),
         apiClient.getDepositRequests(),
         apiClient.getWithdrawalRequests(),
+        apiClient.getProcessingFeePayments(),
         apiClient.getAllInvestments(),
         apiClient.getAllInvestmentsAll(),
       ]);
@@ -210,6 +230,7 @@ export default function AdminDashboard() {
       setKycRequests(kycResponse.requests || []);
       setDepositRequests(depositsResponse.requests || []);
       setWithdrawalRequests(withdrawalsResponse.requests || []);
+      setProcessingFeePayments(processingFeesResponse.payments || []);
       setActiveInvestments(activeInvResponse.investments || []);
       setAllInvestments(allInvResponse.investments || []);
     } catch (error) {
@@ -355,6 +376,45 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: "Failed to reject withdrawal",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Processing Fee Handlers
+  const handleVerifyProcessingFee = async (paymentId: string) => {
+    try {
+      await apiClient.updateProcessingFeePayment(paymentId, "verified");
+      toast({
+        title: "Processing Fee Verified",
+        description: "Processing fee has been verified - user can now withdraw",
+      });
+      fetchAdminData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to verify processing fee",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectProcessingFee = async (paymentId: string) => {
+    try {
+      await apiClient.updateProcessingFeePayment(
+        paymentId,
+        "rejected",
+        "Invalid payment"
+      );
+      toast({
+        title: "Processing Fee Rejected",
+        description: "Processing fee has been rejected",
+      });
+      fetchAdminData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reject processing fee",
         variant: "destructive",
       });
     }
@@ -527,6 +587,9 @@ export default function AdminDashboard() {
             </TabsTrigger>
             <TabsTrigger className="text-xs sm:text-sm" value="deposits">
               Deposits
+            </TabsTrigger>
+            <TabsTrigger className="text-xs sm:text-sm" value="processing-fees">
+              Processing Fees
             </TabsTrigger>
             <TabsTrigger className="text-xs sm:text-sm" value="withdrawals">
               Withdrawals
@@ -1385,6 +1448,117 @@ export default function AdminDashboard() {
                                     variant="destructive"
                                     onClick={() =>
                                       handleRejectDeposit(request._id)
+                                    }
+                                  >
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Processing Fees Tab */}
+          <TabsContent value="processing-fees">
+            <Card>
+              <div className="p-6">
+                <h2 className="text-xl font-bold mb-4">Processing Fee Payments</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          User
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Amount
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Asset
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Submitted
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Status
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {processingFeePayments.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="py-8 text-center text-muted-foreground"
+                          >
+                            No processing fee payments found
+                          </td>
+                        </tr>
+                      ) : (
+                        processingFeePayments.map((payment: any) => (
+                          <tr
+                            key={payment._id}
+                            className="border-b hover:bg-muted/50"
+                          >
+                            <td className="py-3 px-4">
+                              <p className="font-semibold text-sm">
+                                {payment.userId?.email || "Unknown User"}
+                              </p>
+                            </td>
+                            <td className="py-3 px-4">
+                              <p className="font-mono">
+                                ${payment.amount?.toLocaleString()}
+                              </p>
+                            </td>
+                            <td className="py-3 px-4">
+                              <p className="font-mono">{payment.asset}</p>
+                            </td>
+                            <td className="py-3 px-4">
+                              <p className="text-sm">
+                                {new Date(payment.submittedAt).toLocaleDateString()}
+                              </p>
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge
+                                variant={
+                                  payment.status === "verified"
+                                    ? "default"
+                                    : payment.status === "pending"
+                                    ? "secondary"
+                                    : "destructive"
+                                }
+                              >
+                                {payment.status}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              {payment.status === "pending" && (
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      handleVerifyProcessingFee(payment._id)
+                                    }
+                                  >
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Verify
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() =>
+                                      handleRejectProcessingFee(payment._id)
                                     }
                                   >
                                     <XCircle className="h-3 w-3 mr-1" />
