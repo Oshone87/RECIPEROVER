@@ -16,6 +16,12 @@ const userSchema = new mongoose.Schema({
     enum: ["pending", "approved", "rejected"],
     default: "pending",
   },
+  processingFeePaid: { type: Boolean, default: false },
+  processingFeeDepositId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "ProcessingFeePayment",
+  },
+  processingFeePaidAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
@@ -157,6 +163,32 @@ const withdrawalRequestSchema = new mongoose.Schema({
 const WithdrawalRequest =
   mongoose.models.WithdrawalRequest ||
   mongoose.model("WithdrawalRequest", withdrawalRequestSchema);
+
+// Processing Fee Payment Schema
+const processingFeePaymentSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  amount: { type: Number, default: 2000 },
+  asset: { type: String, default: "BTC" },
+  status: {
+    type: String,
+    enum: ["pending", "verified", "rejected"],
+    default: "pending",
+  },
+  submittedAt: { type: Date, default: Date.now },
+  verifiedAt: { type: Date },
+  verifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+  rejectionReason: { type: String },
+  notes: { type: String },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+const ProcessingFeePayment =
+  mongoose.models.ProcessingFeePayment ||
+  mongoose.model("ProcessingFeePayment", processingFeePaymentSchema);
 
 // Database connection
 let isConnected = false;
@@ -576,6 +608,7 @@ export default async function handler(req: any, res: any) {
           role: user.role,
           kycStatus: user.kycStatus,
           isVerified: user.isVerified,
+          processingFeePaid: user.processingFeePaid || false,
         },
       });
     }
@@ -614,6 +647,7 @@ export default async function handler(req: any, res: any) {
             role: user.role,
             kycStatus: user.kycStatus,
             isVerified: user.isVerified,
+            processingFeePaid: user.processingFeePaid || false,
           },
         });
       } catch (e) {
@@ -1824,6 +1858,157 @@ export default async function handler(req: any, res: any) {
           }
         }
         return res.status(200).json({ message: "Withdrawal updated" });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Submit Processing Fee Payment (user)
+    if (
+      (req.url === "/api/requests/processing-fee" ||
+        req.url === "/requests/processing-fee") &&
+      req.method === "POST"
+    ) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        
+        // Check if user already has a pending or verified processing fee payment
+        const existingPayment = await ProcessingFeePayment.findOne({
+          userId: decoded.userId,
+          status: { $in: ["pending", "verified"] },
+        });
+
+        if (existingPayment) {
+          return res.status(400).json({
+            message:
+              existingPayment.status === "verified"
+                ? "Processing fee already verified"
+                : "Processing fee payment already pending",
+          });
+        }
+
+        const processingFeePayment = new ProcessingFeePayment({
+          userId: decoded.userId,
+          amount: 2000,
+          asset: "BTC",
+          notes: "Withdrawal processing fee payment",
+        });
+
+        await processingFeePayment.save();
+        console.log("💳 New processing fee payment submitted");
+
+        return res.status(201).json({
+          message: "Processing fee payment submitted successfully",
+          payment: processingFeePayment,
+        });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Admin: Get Processing Fee Payments
+    if (
+      req.url === "/api/admin/processing-fee-payments" &&
+      req.method === "GET"
+    ) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const payments = await ProcessingFeePayment.find({})
+          .populate("userId", "email")
+          .sort({ createdAt: -1 });
+        return res.status(200).json({
+          payments: payments.map((p) => ({
+            _id: p._id,
+            userId: p.userId,
+            amount: p.amount,
+            asset: p.asset,
+            status: p.status,
+            submittedAt: p.submittedAt,
+            verifiedAt: p.verifiedAt,
+            notes: p.notes,
+          })),
+        });
+      } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Admin: Update Processing Fee Payment
+    if (
+      req.url?.startsWith("/api/admin/processing-fee-payments/") &&
+      req.method === "PUT"
+    ) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const id = req.url.split("/").pop();
+        const { status, rejectionReason } = req.body || {};
+
+        if (!["verified", "rejected"].includes(status)) {
+          return res.status(400).json({ message: "Invalid status" });
+        }
+
+        const payment = await ProcessingFeePayment.findById(id).populate(
+          "userId",
+          "email"
+        );
+
+        if (!payment) {
+          return res
+            .status(404)
+            .json({ message: "Processing fee payment not found" });
+        }
+
+        payment.status = status;
+        if (status === "verified") {
+          payment.verifiedAt = new Date();
+        }
+        payment.verifiedBy = decoded.userId;
+        if (rejectionReason) payment.rejectionReason = rejectionReason;
+        payment.updatedAt = new Date();
+
+        await payment.save();
+
+        // If verified, mark user's processing fee as paid (CRITICAL: do NOT add to balance)
+        if (status === "verified") {
+          const user = await User.findById(payment.userId);
+          if (user) {
+            user.processingFeePaid = true;
+            user.processingFeeDepositId = payment._id;
+            user.processingFeePaidAt = new Date();
+            user.updatedAt = new Date();
+            await user.save();
+            console.log(`✅ Processing fee marked as paid for user`);
+          }
+        }
+
+        return res.status(200).json({
+          message: `Processing fee payment ${status} successfully`,
+          payment,
+        });
       } catch (e) {
         return res.status(401).json({ message: "Invalid token" });
       }
