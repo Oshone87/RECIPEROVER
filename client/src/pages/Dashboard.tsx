@@ -44,7 +44,7 @@ import { TransactionDetailsModal } from "@/components/TransactionDetailsModal";
 // Removed offer day banner imports per new UX
 
 export default function Dashboard() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, refreshUser } = useAuth();
   const {
     balance,
     assetBalances,
@@ -79,6 +79,7 @@ export default function Dashboard() {
   const [showEarnX2Explain, setShowEarnX2Explain] = useState(false);
   const [openInvestmentAfterDeposit, setOpenInvestmentAfterDeposit] =
     useState(false);
+  const [showFeeVerifiedBanner, setShowFeeVerifiedBanner] = useState(false);
   // Promo UI removed from dashboard; status handled via settings dropdown
 
   // Fetch real user data
@@ -87,6 +88,28 @@ export default function Dashboard() {
       fetchUserData();
     }
   }, [isAuthenticated]);
+
+  // Check if processing fee was just verified
+  useEffect(() => {
+    if (user?.processingFeePaid) {
+      const hasSeenNotification = sessionStorage.getItem('feeVerifiedNotificationSeen');
+      if (!hasSeenNotification) {
+        setShowFeeVerifiedBanner(true);
+        sessionStorage.setItem('feeVerifiedNotificationSeen', 'true');
+      }
+    }
+  }, [user?.processingFeePaid]);
+
+  // Poll for user updates when not processing fee paid (to detect when admin approves)
+  useEffect(() => {
+    if (!user?.processingFeePaid && isAuthenticated) {
+      const interval = setInterval(() => {
+        refreshUser();
+      }, 10000); // Check every 10 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [user?.processingFeePaid, isAuthenticated, refreshUser]);
 
   const fetchUserData = async () => {
     try {
@@ -186,6 +209,31 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
+
+      {/* Processing Fee Verified Banner */}
+      {showFeeVerifiedBanner && (
+        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-6 w-6" />
+                <div>
+                  <p className="font-semibold">Withdrawal Processing Fee Verified!</p>
+                  <p className="text-sm opacity-90">Your withdrawal privileges have been activated. You can now withdraw funds from your account.</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFeeVerifiedBanner(false)}
+                className="text-white hover:bg-white/20"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">

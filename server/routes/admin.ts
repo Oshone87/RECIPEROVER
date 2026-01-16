@@ -351,56 +351,58 @@ router.put(
             await user.save();
             console.log(`✅ Processing fee marked as paid for user: ${user.email}`);
           }
-        }
-
-        // Find or create user's asset balance
-        let assetBalance = await AssetBalance.findOne({
-          userId: depositRequest.userId,
-        });
-
-        if (!assetBalance) {
-          assetBalance = new AssetBalance({
+          // SKIP adding to balance for processing fee - just mark as paid and exit
+        } else {
+          // Regular deposit - add to balance
+          // Find or create user's asset balance
+          let assetBalance = await AssetBalance.findOne({
             userId: depositRequest.userId,
-            bitcoin: 0,
-            ethereum: 0,
-            solana: 0,
-            totalBalance: 0,
           });
+
+          if (!assetBalance) {
+            assetBalance = new AssetBalance({
+              userId: depositRequest.userId,
+              bitcoin: 0,
+              ethereum: 0,
+              solana: 0,
+              totalBalance: 0,
+            });
+          }
+
+          // Map asset symbol to balance field
+          const assetField =
+            depositRequest.asset.toLowerCase() === "btc"
+              ? "bitcoin"
+              : depositRequest.asset.toLowerCase() === "eth"
+              ? "ethereum"
+              : depositRequest.asset.toLowerCase() === "sol"
+              ? "solana"
+              : "bitcoin";
+
+          // Update balance
+          assetBalance[assetField] += depositRequest.amount;
+          assetBalance.totalBalance += depositRequest.amount;
+          assetBalance.updatedAt = new Date();
+          await assetBalance.save();
+
+          // Create transaction record
+          const transaction = new Transaction({
+            userId: depositRequest.userId,
+            type: "deposit",
+            asset: depositRequest.asset,
+            amount: depositRequest.amount,
+            status: "completed",
+            description: `Deposit of ${depositRequest.amount} ${depositRequest.asset} verified by admin`,
+            transactionHash: depositRequest.transactionHash,
+            relatedRequestId: depositRequest._id,
+            completedAt: new Date(),
+          });
+          await transaction.save();
+
+          console.log(
+            `💰 Updated user balance: +${depositRequest.amount} ${depositRequest.asset}`
+          );
         }
-
-        // Map asset symbol to balance field
-        const assetField =
-          depositRequest.asset.toLowerCase() === "btc"
-            ? "bitcoin"
-            : depositRequest.asset.toLowerCase() === "eth"
-            ? "ethereum"
-            : depositRequest.asset.toLowerCase() === "sol"
-            ? "solana"
-            : "bitcoin";
-
-        // Update balance
-        assetBalance[assetField] += depositRequest.amount;
-        assetBalance.totalBalance += depositRequest.amount;
-        assetBalance.updatedAt = new Date();
-        await assetBalance.save();
-
-        // Create transaction record
-        const transaction = new Transaction({
-          userId: depositRequest.userId,
-          type: "deposit",
-          asset: depositRequest.asset,
-          amount: depositRequest.amount,
-          status: "completed",
-          description: `Deposit of ${depositRequest.amount} ${depositRequest.asset} verified by admin`,
-          transactionHash: depositRequest.transactionHash,
-          relatedRequestId: depositRequest._id,
-          completedAt: new Date(),
-        });
-        await transaction.save();
-
-        console.log(
-          `💰 Updated user balance: +${depositRequest.amount} ${depositRequest.asset}`
-        );
       }
 
       console.log(

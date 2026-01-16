@@ -116,6 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isVerified: !!u.isVerified,
         isAdmin: u.role === "admin",
         hasCompletedKYC: u.kycStatus === "approved",
+        processingFeePaid: !!u.processingFeePaid,
         balance: { USDT: 0, BTC: 0, ETH: 0, BNB: 0 },
       } as User;
 
