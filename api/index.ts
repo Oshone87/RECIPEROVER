@@ -1986,7 +1986,10 @@ export default async function handler(req: any, res: any) {
         if (status === "verified") {
           payment.verifiedAt = new Date();
         }
-        payment.verifiedBy = decoded.userId;
+        // Only set verifiedBy if it's a valid ObjectId (not "admin" string)
+        if (decoded.userId !== "admin") {
+          payment.verifiedBy = decoded.userId;
+        }
         if (rejectionReason) payment.rejectionReason = rejectionReason;
         payment.updatedAt = new Date();
 
