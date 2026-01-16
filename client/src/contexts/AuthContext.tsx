@@ -15,6 +15,7 @@ interface User {
   kycStatus: string;
   isVerified: boolean;
   isAdmin: boolean; // computed from role
+  processingFeePaid?: boolean; // tracks if user has paid withdrawal processing fee
   balance: {
     USDT: number;
     BTC: number;
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isVerified: !!u.isVerified,
         isAdmin: u.role === "admin",
         hasCompletedKYC: u.kycStatus === "approved",
+        processingFeePaid: !!u.processingFeePaid,
         balance: { USDT: 0, BTC: 0, ETH: 0, BNB: 0 },
       });
     } catch (error) {

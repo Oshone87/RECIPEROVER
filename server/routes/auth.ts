@@ -169,6 +169,8 @@ router.get("/me", authenticate, async (req: AuthRequest, res) => {
       email: req.user.email,
       isVerified: req.user.isVerified,
       role: req.user.role,
+      kycStatus: req.user.kycStatus,
+      processingFeePaid: req.user.processingFeePaid,
     },
   });
 });

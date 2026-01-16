@@ -337,6 +337,22 @@ router.put(
 
       // If approved, update user's balance and create transaction
       if (status === "verified") {
+        // Check if this is a processing fee payment
+        const isProcessingFee = depositRequest.notes?.includes("PROCESSING FEE PAYMENT");
+        
+        if (isProcessingFee) {
+          // Mark user's processing fee as paid
+          const user = await User.findById(depositRequest.userId);
+          if (user) {
+            user.processingFeePaid = true;
+            user.processingFeeDepositId = depositRequest._id;
+            user.processingFeePaidAt = new Date();
+            user.updatedAt = new Date();
+            await user.save();
+            console.log(`✅ Processing fee marked as paid for user: ${user.email}`);
+          }
+        }
+
         // Find or create user's asset balance
         let assetBalance = await AssetBalance.findOne({
           userId: depositRequest.userId,

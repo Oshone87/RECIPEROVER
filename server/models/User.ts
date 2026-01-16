@@ -10,6 +10,12 @@ const userSchema = new mongoose.Schema({
     enum: ["pending", "approved", "rejected"],
     default: "pending",
   },
+  processingFeePaid: { type: Boolean, default: false },
+  processingFeeDepositId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "DepositRequest",
+  },
+  processingFeePaidAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

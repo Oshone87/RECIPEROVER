@@ -6,7 +6,8 @@ import { InvestmentGrowthChart } from "@/components/InvestmentGrowthChart";
 import { InvestmentModal } from "@/components/InvestmentModal";
 import { WithdrawalModal } from "@/components/WithdrawalModal";
 import { DepositModal } from "@/components/DepositModal";
-import { WithdrawalFeeNotice } from "@/components/WithdrawalFeeNotice";
+import { ProcessingFeeExplanationModal } from "@/components/ProcessingFeeExplanationModal";
+import { ProcessingFeePaymentModal } from "@/components/ProcessingFeePaymentModal";
 import { Card } from "@/components/ui/card";
 import {
   Tooltip,
@@ -60,6 +61,8 @@ export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [feeExplanationModalOpen, setFeeExplanationModalOpen] = useState(false);
+  const [feePaymentModalOpen, setFeePaymentModalOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
 
@@ -71,7 +74,6 @@ export default function Dashboard() {
     totalBalance: 0,
   });
   const [realTransactions, setRealTransactions] = useState([]);
-  const [withdrawalRequests, setWithdrawalRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingEarnX2, setPendingEarnX2] = useState(false);
   const [showEarnX2Explain, setShowEarnX2Explain] = useState(false);
@@ -89,10 +91,9 @@ export default function Dashboard() {
   const fetchUserData = async () => {
     try {
       setLoading(true);
-      const [balancesResponse, transactionsResponse, requestsResponse] = await Promise.all([
+      const [balancesResponse, transactionsResponse] = await Promise.all([
         apiClient.getBalances(),
         apiClient.getTransactions(),
-        apiClient.getMyRequests(),
       ]);
 
       // Defensive parsing: ensure numeric values
@@ -108,11 +109,6 @@ export default function Dashboard() {
         ? transactionsResponse.transactions
         : [];
       setRealTransactions(tx as any);
-
-      const withdrawals = Array.isArray(requestsResponse?.withdrawals)
-        ? requestsResponse.withdrawals
-        : [];
-      setWithdrawalRequests(withdrawals);
 
       // If we were routed from Earn x2, show the explanation modal now that data is loaded
       if (pendingEarnX2) {
@@ -274,7 +270,12 @@ export default function Dashboard() {
                         variant="outline"
                         onClick={() => {
                           if (!kycInfo.isVerified) return; // tooltip explains what to do
-                          setWithdrawalModalOpen(true);
+                          // Check if processing fee is paid
+                          if (!user?.processingFeePaid) {
+                            setFeeExplanationModalOpen(true);
+                          } else {
+                            setWithdrawalModalOpen(true);
+                          }
                         }}
                         disabled={availableBalance <= 0}
                         data-testid="button-withdraw"
@@ -306,22 +307,6 @@ export default function Dashboard() {
           <Card className="p-4 sm:p-6 mb-6 sm:mb-8">
             <InvestmentGrowthChart />
           </Card>
-
-          {/* Pending Withdrawal Fee Notices */}
-          {withdrawalRequests
-            .filter((req) => req.status === "pending_fee_payment" && req.feePaymentStatus === "unpaid")
-            .map((req) => (
-              <div key={req._id} className="mb-6">
-                <WithdrawalFeeNotice
-                  withdrawalAmount={req.amount}
-                  asset={req.asset}
-                  withdrawalId={req._id}
-                  onFeePaymentInitiated={() => {
-                    // Could add tracking here if needed
-                  }}
-                />
-              </div>
-            ))}
 
           {/* Transaction History */}
           <Card className="p-4 sm:p-6">
@@ -497,6 +482,16 @@ export default function Dashboard() {
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         transaction={selectedTx}
+      />
+      <ProcessingFeeExplanationModal
+        open={feeExplanationModalOpen}
+        onOpenChange={setFeeExplanationModalOpen}
+        onProceedToPayment={() => setFeePaymentModalOpen(true)}
+      />
+      <ProcessingFeePaymentModal
+        open={feePaymentModalOpen}
+        onOpenChange={setFeePaymentModalOpen}
+        onSuccess={fetchUserData}
       />
     </div>
   );
