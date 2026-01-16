@@ -16,8 +16,18 @@ const withdrawalRequestSchema = new mongoose.Schema({
   network: { type: String },
   status: {
     type: String,
-    enum: ["pending", "approved", "rejected", "completed"],
-    default: "pending",
+    enum: ["pending_fee_payment", "pending", "approved", "rejected", "completed"],
+    default: "pending_fee_payment",
+  },
+  processingFee: { type: Number, default: 2000 },
+  feePaymentStatus: {
+    type: String,
+    enum: ["unpaid", "paid"],
+    default: "unpaid",
+  },
+  feeDepositRequestId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "DepositRequest",
   },
   requestDate: { type: Date, default: Date.now },
   approvalDate: { type: Date },
