@@ -110,7 +110,7 @@ export function WithdrawalModal({
 
       toast({
         title: "Withdrawal Request Submitted",
-        description: `Your withdrawal request for $${numAmount.toLocaleString()} in ${asset} has been submitted. Please pay the $2,000 processing fee to release your funds.`,
+        description: `Your withdrawal request for $${numAmount.toLocaleString()} in ${asset} has been submitted.`,
       });
 
       onOpenChange(false);
