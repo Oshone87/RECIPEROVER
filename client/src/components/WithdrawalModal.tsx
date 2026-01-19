@@ -58,6 +58,16 @@ export function WithdrawalModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (user?.withdrawalRestricted) {
+      toast({
+        title: "Withdrawal Restricted",
+        description: "Your account has withdrawal restrictions. Please check the alert at the top of the page.",
+        variant: "destructive",
+      });
+      onOpenChange(false);
+      return;
+    }
+
     if (!walletAddress || !amount) {
       toast({
         title: "Missing information",

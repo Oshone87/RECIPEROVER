@@ -16,6 +16,9 @@ const userSchema = new mongoose.Schema({
     ref: "DepositRequest",
   },
   processingFeePaidAt: { type: Date },
+  withdrawalRestricted: { type: Boolean, default: false },
+  restrictionReason: { type: String },
+  restrictedAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

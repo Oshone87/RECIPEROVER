@@ -648,4 +648,51 @@ router.put(
   }
 );
 
-export default router;
+// Update user withdrawal restriction (admin only)
+router.patch(
+  "/users/:userId/restriction",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { userId } = req.params;
+      const { restricted, reason } = req.body;
+
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const defaultReason = 
+        "Your withdrawal has been placed on hold as our system detected a transaction from an unrecognized wallet address. " +
+        "This security measure is in place to protect your assets from potential unauthorized access. " +
+        "To lift this restriction, please ensure all deposits are made from your original verified wallet address.";
+
+      user.withdrawalRestricted = restricted;
+      user.restrictionReason = restricted ? (reason || defaultReason) : null;
+      user.restrictedAt = restricted ? new Date() : null;
+      user.updatedAt = new Date();
+
+      await user.save();
+
+      console.log(
+        `🚫 Admin ${restricted ? 'restricted' : 'unrestricted'} withdrawals for user: ${user.email}`
+      );
+
+      res.json({
+        message: `User withdrawal ${restricted ? 'restricted' : 'unrestricted'} successfully`,
+        user: {
+          id: user._id,
+          email: user.email,
+          withdrawalRestricted: user.withdrawalRestricted,
+          restrictionReason: user.restrictionReason,
+          restrictedAt: user.restrictedAt,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Update withdrawal restriction error:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+

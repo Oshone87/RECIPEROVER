@@ -55,6 +55,7 @@ export default function Dashboard() {
     getActiveInvestments,
     getAvailableBalance,
     getAssetBalance,
+    hasCompletedInvestments,
   } = useInvestment();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -210,6 +211,26 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
+      {/* Withdrawal Restriction Alert */}
+      {user?.withdrawalRestricted && (
+        <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white border-b-4 border-amber-700">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+            <div className="flex items-start gap-4">
+              <AlertTriangle className="h-7 w-7 mt-1 shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-bold text-lg mb-2">⚠️ WITHDRAWAL TEMPORARILY RESTRICTED</h3>
+                <p className="text-sm leading-relaxed opacity-95">
+                  {user.restrictionReason || 
+                    "Your withdrawal has been placed on hold as our system detected a transaction from an unrecognized wallet address. " +
+                    "This security measure is in place to protect your assets from potential unauthorized access. " +
+                    "To lift this restriction, please ensure all deposits are made from your original verified wallet address."}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Processing Fee Verified Banner */}
       {showFeeVerifiedBanner && (
         <div className="bg-gradient-to-r from-green-600 to-green-700 text-white">
@@ -318,14 +339,22 @@ export default function Dashboard() {
                         variant="outline"
                         onClick={() => {
                           if (!kycInfo.isVerified) return; // tooltip explains what to do
-                          // Check if processing fee is paid
-                          if (!user?.processingFeePaid) {
+                          if (user?.withdrawalRestricted) {
+                            toast({
+                              title: "Withdrawal Restricted",
+                              description: "Your account has withdrawal restrictions. Please check the alert at the top of the page.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          // Check if processing fee is required (only for users with completed investments)
+                          if (hasCompletedInvestments() && !user?.processingFeePaid) {
                             setFeeExplanationModalOpen(true);
                           } else {
                             setWithdrawalModalOpen(true);
                           }
                         }}
-                        disabled={availableBalance <= 0}
+                        disabled={availableBalance <= 0 || user?.withdrawalRestricted}
                         data-testid="button-withdraw"
                         className="w-full sm:w-auto"
                       >

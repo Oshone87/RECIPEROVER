@@ -16,6 +16,9 @@ interface User {
   isVerified: boolean;
   isAdmin: boolean; // computed from role
   processingFeePaid?: boolean; // tracks if user has paid withdrawal processing fee
+  withdrawalRestricted?: boolean; // tracks if user is restricted from withdrawals
+  restrictionReason?: string; // reason for withdrawal restriction
+  restrictedAt?: string; // timestamp when restriction was placed
   balance: {
     USDT: number;
     BTC: number;
@@ -79,6 +82,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAdmin: u.role === "admin",
         hasCompletedKYC: u.kycStatus === "approved",
         processingFeePaid: !!u.processingFeePaid,
+        withdrawalRestricted: !!u.withdrawalRestricted,
+        restrictionReason: u.restrictionReason,
+        restrictedAt: u.restrictedAt,
         balance: { USDT: 0, BTC: 0, ETH: 0, BNB: 0 },
       });
     } catch (error) {
@@ -117,6 +123,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAdmin: u.role === "admin",
         hasCompletedKYC: u.kycStatus === "approved",
         processingFeePaid: !!u.processingFeePaid,
+        withdrawalRestricted: !!u.withdrawalRestricted,
+        restrictionReason: u.restrictionReason,
+        restrictedAt: u.restrictedAt,
         balance: { USDT: 0, BTC: 0, ETH: 0, BNB: 0 },
       } as User;
 

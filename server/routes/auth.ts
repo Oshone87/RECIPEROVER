@@ -171,6 +171,9 @@ router.get("/me", authenticate, async (req: AuthRequest, res) => {
       role: req.user.role,
       kycStatus: req.user.kycStatus,
       processingFeePaid: req.user.processingFeePaid,
+      withdrawalRestricted: req.user.withdrawalRestricted,
+      restrictionReason: req.user.restrictionReason,
+      restrictedAt: req.user.restrictedAt,
     },
   });
 });

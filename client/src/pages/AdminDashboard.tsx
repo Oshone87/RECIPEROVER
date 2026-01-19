@@ -41,6 +41,9 @@ interface DatabaseUser {
   isVerified: boolean;
   isDisabled?: boolean;
   kycStatus: string;
+  withdrawalRestricted?: boolean;
+  restrictionReason?: string;
+  restrictedAt?: string;
   createdAt: string;
 }
 
@@ -655,6 +658,9 @@ export default function AdminDashboard() {
                           KYC Status
                         </th>
                         <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                          Withdrawal
+                        </th>
+                        <th className="text-left py-3 px-4 text-xs sm:text-sm">
                           Joined
                         </th>
                         <th className="text-left py-3 px-4 text-xs sm:text-sm">
@@ -666,7 +672,7 @@ export default function AdminDashboard() {
                       {pagedUsers.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={6}
+                            colSpan={7}
                             className="py-8 text-center text-muted-foreground"
                           >
                             No users found
@@ -720,10 +726,46 @@ export default function AdminDashboard() {
                                 </Badge>
                               </td>
                               <td className="py-3 px-4">
+                                <Badge
+                                  variant={
+                                    u.withdrawalRestricted ? "destructive" : "secondary"
+                                  }
+                                >
+                                  {u.withdrawalRestricted ? "Restricted" : "Active"}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4">
                                 {new Date(u.createdAt).toLocaleDateString()}
                               </td>
                               <td className="py-3 px-4">
                                 <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant={
+                                      u.withdrawalRestricted ? "default" : "outline"
+                                    }
+                                    onClick={async () => {
+                                      try {
+                                        await apiClient.updateWithdrawalRestriction(
+                                          u._id,
+                                          !u.withdrawalRestricted
+                                        );
+                                        toast({
+                                          title: u.withdrawalRestricted
+                                            ? "Withdrawal restriction removed"
+                                            : "Withdrawal restricted",
+                                        });
+                                        fetchAdminData();
+                                      } catch (e) {
+                                        toast({
+                                          title: "Action failed",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    {u.withdrawalRestricted ? "Unrestrict" : "Restrict"}
+                                  </Button>
                                   <Button
                                     size="sm"
                                     variant="outline"

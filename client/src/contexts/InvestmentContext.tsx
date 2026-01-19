@@ -56,6 +56,7 @@ interface InvestmentContextType {
   getAvailableBalance: () => number;
   getAssetBalance: (asset: string) => number;
   updateAssetBalance: (asset: string, amount: number) => void;
+  hasCompletedInvestments: () => boolean;
   deposit: (amount: number, asset: string) => Promise<boolean>;
   withdraw: (amount: number, asset: string) => Promise<boolean>;
   createDepositRequest: (
@@ -129,6 +130,10 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
       setBalance(newTotalBalance);
       return newBalances;
     });
+  };
+
+  const hasCompletedInvestments = (): boolean => {
+    return investments.some((inv) => inv.status === "completed");
   };
 
   // Load data from backend when user is authenticated
@@ -476,6 +481,7 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
     getAvailableBalance,
     getAssetBalance,
     updateAssetBalance,
+    hasCompletedInvestments,
     deposit,
     withdraw,
     createDepositRequest,
