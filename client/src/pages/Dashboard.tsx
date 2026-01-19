@@ -112,6 +112,17 @@ export default function Dashboard() {
     }
   }, [user?.processingFeePaid, isAuthenticated, refreshUser]);
 
+  // Poll for withdrawal restriction changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      const interval = setInterval(() => {
+        refreshUser();
+      }, 8000); // Check every 8 seconds for restriction updates
+
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, refreshUser]);
+
   const fetchUserData = async () => {
     try {
       setLoading(true);

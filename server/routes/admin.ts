@@ -658,10 +658,15 @@ router.patch(
       const { userId } = req.params;
       const { restricted, reason } = req.body;
 
+      console.log(`📝 Restriction update request - userId: ${userId}, restricted: ${restricted}`);
+
       const user = await User.findById(userId);
       if (!user) {
+        console.log(`❌ User not found: ${userId}`);
         return res.status(404).json({ message: "User not found" });
       }
+
+      console.log(`👤 Found user: ${user.email}, current restricted: ${user.withdrawalRestricted}`);
 
       const defaultReason = 
         "Your withdrawal has been placed on hold as our system detected a transaction from an unrecognized wallet address. " +
@@ -676,7 +681,7 @@ router.patch(
       await user.save();
 
       console.log(
-        `🚫 Admin ${restricted ? 'restricted' : 'unrestricted'} withdrawals for user: ${user.email}`
+        `✅ Admin ${restricted ? 'restricted' : 'unrestricted'} withdrawals for user: ${user.email}, new value: ${user.withdrawalRestricted}`
       );
 
       res.json({

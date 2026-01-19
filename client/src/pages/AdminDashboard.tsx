@@ -746,19 +746,27 @@ export default function AdminDashboard() {
                                     }
                                     onClick={async () => {
                                       try {
+                                        const newRestricted = !u.withdrawalRestricted;
+                                        console.log('Updating restriction for user:', u.email, 'to:', newRestricted);
+                                        
                                         await apiClient.updateWithdrawalRestriction(
                                           u._id,
-                                          !u.withdrawalRestricted
+                                          newRestricted
                                         );
+                                        
                                         toast({
-                                          title: u.withdrawalRestricted
-                                            ? "Withdrawal restriction removed"
-                                            : "Withdrawal restricted",
+                                          title: newRestricted
+                                            ? "Withdrawal restricted"
+                                            : "Withdrawal restriction removed",
+                                          description: `User ${u.email} ${newRestricted ? 'can no longer' : 'can now'} withdraw funds`,
                                         });
-                                        fetchAdminData();
-                                      } catch (e) {
+                                        
+                                        await fetchAdminData();
+                                      } catch (e: any) {
+                                        console.error('Restriction update error:', e);
                                         toast({
                                           title: "Action failed",
+                                          description: e?.message || "Failed to update withdrawal restriction",
                                           variant: "destructive",
                                         });
                                       }
