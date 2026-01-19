@@ -66,6 +66,7 @@ export default function Dashboard() {
   const [feePaymentModalOpen, setFeePaymentModalOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
+  const [restrictionModalOpen, setRestrictionModalOpen] = useState(false);
 
   // Real user data from API
   const [realBalances, setRealBalances] = useState({
@@ -122,6 +123,20 @@ export default function Dashboard() {
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, refreshUser]);
+
+  // Auto-open restriction modal when user is restricted (first time only per session)
+  useEffect(() => {
+    if (user?.withdrawalRestricted) {
+      const hasSeenRestriction = sessionStorage.getItem('restrictionModalSeen');
+      if (!hasSeenRestriction) {
+        setRestrictionModalOpen(true);
+        sessionStorage.setItem('restrictionModalSeen', 'true');
+      }
+    } else {
+      // Clear the flag when restriction is lifted
+      sessionStorage.removeItem('restrictionModalSeen');
+    }
+  }, [user?.withdrawalRestricted]);
 
   const fetchUserData = async () => {
     try {
@@ -222,25 +237,37 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      {/* Withdrawal Restriction Alert */}
-      {user?.withdrawalRestricted && (
-        <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white border-b-4 border-amber-700">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-            <div className="flex items-start gap-4">
-              <AlertTriangle className="h-7 w-7 mt-1 shrink-0" />
-              <div className="flex-1">
-                <h3 className="font-bold text-lg mb-2">⚠️ WITHDRAWAL TEMPORARILY RESTRICTED</h3>
-                <p className="text-sm leading-relaxed opacity-95">
-                  {user.restrictionReason || 
-                    "Your withdrawal has been placed on hold as our system detected a transaction from an unrecognized wallet address. " +
-                    "This security measure is in place to protect your assets from potential unauthorized access. " +
-                    "To lift this restriction, please ensure all deposits are made from your original verified wallet address."}
-                </p>
-              </div>
+      {/* Withdrawal Restriction Modal */}
+      <Dialog open={restrictionModalOpen} onOpenChange={setRestrictionModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-6 w-6" />
+              Account Security Alert
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <h4 className="font-semibold text-red-900 dark:text-red-100 mb-2">
+                Withdrawal Privileges Temporarily Suspended
+              </h4>
+              <p className="text-sm text-red-800 dark:text-red-200 leading-relaxed">
+                {user?.restrictionReason || 
+                  "Our security system has detected deposit activity from an unrecognized wallet address associated with your account. " +
+                  "As part of our commitment to safeguarding your assets, we have temporarily suspended withdrawal privileges pending verification. " +
+                  "To restore full account access, please ensure all future deposits originate from your originally verified wallet address. " +
+                  "We appreciate your understanding as we work to maintain the highest security standards for your protection."}
+              </p>
+            </div>
+            <div className="flex items-start gap-2 text-xs text-muted-foreground">
+              <Clock className="h-4 w-4 mt-0.5 shrink-0" />
+              <p>
+                This restriction was applied on {user?.restrictedAt ? new Date(user.restrictedAt).toLocaleString() : 'recently'} and will remain in effect until verified.
+              </p>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Processing Fee Verified Banner */}
       {showFeeVerifiedBanner && (
@@ -269,6 +296,20 @@ export default function Dashboard() {
 
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          {/* Withdrawal Restriction Warning Badge */}
+          {user?.withdrawalRestricted && (
+            <div className="mb-4">
+              <button
+                onClick={() => setRestrictionModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-lg transition-colors"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                <span className="font-semibold text-sm">Withdrawal Restricted</span>
+                <span className="text-xs opacity-90">Click for details</span>
+              </button>
+            </div>
+          )}
+
           <div className="space-y-6 sm:space-y-0 sm:flex sm:flex-wrap sm:justify-between sm:items-center sm:gap-6">
             <div className="space-y-1 text-center sm:text-left">
               <p className="text-sm opacity-90">Total Balance</p>
