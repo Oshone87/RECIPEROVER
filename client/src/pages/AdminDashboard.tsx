@@ -754,6 +754,15 @@ export default function AdminDashboard() {
                                           newRestricted
                                         );
                                         
+                                        // Update local state immediately for instant UI feedback
+                                        setUsers(prevUsers => 
+                                          prevUsers.map(user => 
+                                            user._id === u._id 
+                                              ? { ...user, withdrawalRestricted: newRestricted }
+                                              : user
+                                          )
+                                        );
+                                        
                                         toast({
                                           title: newRestricted
                                             ? "Withdrawal restricted"
@@ -761,6 +770,7 @@ export default function AdminDashboard() {
                                           description: `User ${u.email} ${newRestricted ? 'can no longer' : 'can now'} withdraw funds`,
                                         });
                                         
+                                        // Refresh data from server to ensure consistency
                                         await fetchAdminData();
                                       } catch (e: any) {
                                         console.error('Restriction update error:', e);
