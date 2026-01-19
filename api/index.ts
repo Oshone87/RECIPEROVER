@@ -696,6 +696,9 @@ export default async function handler(req: any, res: any) {
             isVerified: u.isVerified,
             isDisabled: (u as any).isDisabled || false,
             kycStatus: u.kycStatus,
+            withdrawalRestricted: (u as any).withdrawalRestricted || false,
+            restrictionReason: (u as any).restrictionReason,
+            restrictedAt: (u as any).restrictedAt,
             createdAt: u.createdAt,
           })),
         });
