@@ -98,21 +98,7 @@ export default function Contact() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <MessageSquare className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle>Live Chat</CardTitle>
-              <CardDescription>Chat with our team</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-2">
-                Available 24/7
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Average response time: 5 minutes
-              </p>
-            </CardContent>
-          </Card>
+         
 
           <Card>
             <CardHeader>
@@ -125,7 +111,7 @@ export default function Contact() {
                 Priority support for all tiers
               </p>
               <p className="text-xs text-muted-foreground">
-                Diamond tier: Immediate response
+                Gold tier: Immediate response
               </p>
             </CardContent>
           </Card>

@@ -23,7 +23,7 @@ export default function FAQ() {
         },
         {
           question: "What is the minimum investment amount?",
-          answer: "Our Bronze tier starts at just $100, making crypto investing accessible to everyone. You can upgrade to higher tiers (Silver, Gold, Platinum, Diamond) for better returns and additional benefits."
+          answer: "Our Bronze tier starts at just $1000, making crypto investing accessible to everyone. You can upgrade to higher tiers (Silver, Gold, Platinum, Diamond) for better returns and additional benefits."
         }
       ]
     },
@@ -32,7 +32,7 @@ export default function FAQ() {
       items: [
         {
           question: "What are the different investment tiers?",
-          answer: "We offer 5 investment tiers: Bronze ($100-$999), Silver ($1,000-$4,999), Gold ($5,000-$9,999), Platinum ($10,000-$24,999), and Diamond ($25,000+). Each tier offers increasing daily returns and benefits."
+          answer: "We offer 5 investment tiers: Bronze ($1,000), Silver ($5,000), Gold ($10,000) Each tier offers increasing daily returns and benefits."
         },
         {
           question: "How are returns calculated?",
@@ -53,7 +53,7 @@ export default function FAQ() {
       items: [
         {
           question: "What cryptocurrencies do you accept?",
-          answer: "We currently accept Bitcoin (BTC), Ethereum (ETH), USDT (Tether), and USDC. All deposits are converted to USD equivalent for your account balance calculations."
+          answer: "We currently accept Bitcoin (BTC), Ethereum (ETH), Solana (SOL). All deposits are converted to USD equivalent for your account balance calculations."
         },
         {
           question: "How long do deposits take to process?",
@@ -61,11 +61,7 @@ export default function FAQ() {
         },
         {
           question: "What are the withdrawal limits?",
-          answer: "Minimum withdrawal is $50. Maximum daily withdrawal limits vary by tier: Bronze $1,000, Silver $5,000, Gold $10,000, Platinum $25,000, and Diamond unlimited. Withdrawals are processed within 24 hours."
-        },
-        {
-          question: "Are there any fees?",
-          answer: "We charge no deposit fees. Withdrawal fees are minimal: 1% for amounts under $1,000, 0.5% for $1,000-$10,000, and 0.25% for amounts over $10,000. Network transaction fees apply separately."
+          answer: "Minimum withdrawal is $100. Maximum daily withdrawal limits vary by tier: Bronze $1,000, Silver $5,000, Gold $10,000.  Withdrawals are processed within 24 hours."
         }
       ]
     },
