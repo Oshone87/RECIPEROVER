@@ -1276,25 +1276,28 @@ export default async function handler(req: any, res: any) {
         
         console.log(`📝 Restriction update request - userId: ${userId}, restricted: ${restricted}`);
         
-        const user = await User.findById(userId);
-        if (!user) {
-          console.log(`❌ User not found: ${userId}`);
-          return res.status(404).json({ message: "User not found" });
-        }
-
-        console.log(`👤 Found user: ${user.email}, current restricted: ${user.withdrawalRestricted}`);
-
         const defaultReason = 
           "Your withdrawal has been placed on hold as our system detected a transaction from an unrecognized wallet address. " +
           "This security measure is in place to protect your assets from potential unauthorized access. " +
           "To lift this restriction, please ensure all deposits are made from your original verified wallet address.";
 
-        user.withdrawalRestricted = restricted;
-        user.restrictionReason = restricted ? (reason || defaultReason) : null;
-        user.restrictedAt = restricted ? new Date() : null;
-        user.updatedAt = new Date();
+        const updateData = {
+          withdrawalRestricted: restricted,
+          restrictionReason: restricted ? (reason || defaultReason) : null,
+          restrictedAt: restricted ? new Date() : null,
+          updatedAt: new Date(),
+        };
 
-        await user.save();
+        const user = await User.findByIdAndUpdate(
+          userId,
+          updateData,
+          { new: true, runValidators: true }
+        );
+
+        if (!user) {
+          console.log(`❌ User not found: ${userId}`);
+          return res.status(404).json({ message: "User not found" });
+        }
 
         console.log(
           `✅ Admin ${restricted ? 'restricted' : 'unrestricted'} withdrawals for user: ${user.email}, new value: ${user.withdrawalRestricted}`
@@ -1310,9 +1313,9 @@ export default async function handler(req: any, res: any) {
             restrictedAt: user.restrictedAt,
           },
         });
-      } catch (e) {
+      } catch (e: any) {
         console.error("❌ Update withdrawal restriction error:", e);
-        return res.status(401).json({ message: "Invalid token" });
+        return res.status(500).json({ message: e.message || "Server error" });
       }
     }
 
