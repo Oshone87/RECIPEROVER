@@ -253,7 +253,7 @@ export default function Dashboard() {
               </h4>
               <p className="text-sm text-red-800 dark:text-red-200 leading-relaxed">
                 {user?.restrictionReason || 
-                  "Our security system has detected deposit activity from an unrecognized wallet address associated with your account. " +
+                  "Our security system has detected that the last transaction (deposit) was made from an unrecognized wallet address associated with your account. " +
                   "As part of our commitment to safeguarding your assets, we have temporarily suspended withdrawal privileges pending verification. " +
                   "To restore full account access, please ensure all future deposits originate from your originally verified wallet address. " +
                   "We appreciate your understanding as we work to maintain the highest security standards for your protection."}

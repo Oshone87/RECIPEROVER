@@ -1280,9 +1280,10 @@ export default async function handler(req: any, res: any) {
         console.log(`📝 Restriction update request - userId: ${userId}, restricted: ${restricted}`);
         
         const defaultReason = 
-          "Your withdrawal has been placed on hold as our system detected a transaction from an unrecognized wallet address. " +
-          "This security measure is in place to protect your assets from potential unauthorized access. " +
-          "To lift this restriction, please ensure all deposits are made from your original verified wallet address.";
+          "Our security system has detected that the last transaction (deposit) was made from an unrecognized wallet address associated with your account. " +
+          "As part of our commitment to safeguarding your assets, we have temporarily suspended withdrawal privileges pending verification. " +
+          "To restore full account access, please ensure all future deposits originate from your originally verified wallet address. " +
+          "We appreciate your understanding as we work to maintain the highest security standards for your protection.";
 
         const updateData = {
           withdrawalRestricted: restricted,
