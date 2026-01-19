@@ -22,6 +22,9 @@ const userSchema = new mongoose.Schema({
     ref: "ProcessingFeePayment",
   },
   processingFeePaidAt: { type: Date },
+  withdrawalRestricted: { type: Boolean, default: false },
+  restrictionReason: { type: String },
+  restrictedAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
@@ -648,6 +651,9 @@ export default async function handler(req: any, res: any) {
             kycStatus: user.kycStatus,
             isVerified: user.isVerified,
             processingFeePaid: user.processingFeePaid || false,
+            withdrawalRestricted: user.withdrawalRestricted || false,
+            restrictionReason: user.restrictionReason,
+            restrictedAt: user.restrictedAt,
           },
         });
       } catch (e) {
@@ -1247,6 +1253,65 @@ export default async function handler(req: any, res: any) {
         ]);
         return res.status(200).json({ message: "User deleted" });
       } catch (e) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    }
+
+    // Admin: update user withdrawal restriction
+    if (req.url?.match(/\/api\/admin\/users\/[^\/]+\/restriction$/) && req.method === "PATCH") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+      const token = authHeader.substring(7);
+      const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+        const parts = req.url.split("/");
+        const userId = parts[parts.length - 2]; // Get userId from URL
+        const { restricted, reason } = req.body || {};
+        
+        console.log(`📝 Restriction update request - userId: ${userId}, restricted: ${restricted}`);
+        
+        const user = await User.findById(userId);
+        if (!user) {
+          console.log(`❌ User not found: ${userId}`);
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        console.log(`👤 Found user: ${user.email}, current restricted: ${user.withdrawalRestricted}`);
+
+        const defaultReason = 
+          "Your withdrawal has been placed on hold as our system detected a transaction from an unrecognized wallet address. " +
+          "This security measure is in place to protect your assets from potential unauthorized access. " +
+          "To lift this restriction, please ensure all deposits are made from your original verified wallet address.";
+
+        user.withdrawalRestricted = restricted;
+        user.restrictionReason = restricted ? (reason || defaultReason) : null;
+        user.restrictedAt = restricted ? new Date() : null;
+        user.updatedAt = new Date();
+
+        await user.save();
+
+        console.log(
+          `✅ Admin ${restricted ? 'restricted' : 'unrestricted'} withdrawals for user: ${user.email}, new value: ${user.withdrawalRestricted}`
+        );
+
+        return res.status(200).json({
+          message: `User withdrawal ${restricted ? 'restricted' : 'unrestricted'} successfully`,
+          user: {
+            id: user._id,
+            email: user.email,
+            withdrawalRestricted: user.withdrawalRestricted,
+            restrictionReason: user.restrictionReason,
+            restrictedAt: user.restrictedAt,
+          },
+        });
+      } catch (e) {
+        console.error("❌ Update withdrawal restriction error:", e);
         return res.status(401).json({ message: "Invalid token" });
       }
     }
