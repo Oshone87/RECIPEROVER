@@ -262,7 +262,7 @@ export default function Dashboard() {
             <div className="flex items-start gap-2 text-xs text-muted-foreground">
               <Clock className="h-4 w-4 mt-0.5 shrink-0" />
               <p>
-                This restriction was applied on {user?.restrictedAt ? new Date(user.restrictedAt).toLocaleString() : 'recently'} and will remain in effect until verified.
+                This restriction was applied on {user?.restrictedAt ? new Date(user.restrictedAt).toLocaleDateString() : 'recently'} and will remain in effect until verified.
               </p>
             </div>
           </div>
