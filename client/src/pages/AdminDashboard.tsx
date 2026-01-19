@@ -769,9 +769,6 @@ export default function AdminDashboard() {
                                             : "Withdrawal restriction removed",
                                           description: `User ${u.email} ${newRestricted ? 'can no longer' : 'can now'} withdraw funds`,
                                         });
-                                        
-                                        // Refresh data from server to ensure consistency
-                                        await fetchAdminData();
                                       } catch (e: any) {
                                         console.error('Restriction update error:', e);
                                         toast({
