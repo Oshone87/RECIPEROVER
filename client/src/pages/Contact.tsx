@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, MessageSquare, Clock, MapPin } from "lucide-react";
 import { useState } from "react";
+import emailjs from '@emailjs/browser';
+import { EMAILJS_CONFIG } from "@/config/emailjs";
 
 export default function Contact() {
   const { toast } = useToast();
@@ -52,22 +54,45 @@ export default function Contact() {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Send email using EmailJS
+      const result = await emailjs.send(
+        EMAILJS_CONFIG.SERVICE_ID,
+        EMAILJS_CONFIG.TEMPLATE_ID,
+        {
+          from_name: formData.name,
+          from_email: formData.email,
+          subject: formData.subject,
+          message: formData.message,
+          to_email: 'cryptoinvest.helpdesk@gmail.com',
+        },
+        EMAILJS_CONFIG.PUBLIC_KEY
+      );
+
+      if (result.text === 'OK') {
+        toast({
+          title: "Message sent successfully!",
+          description: "We'll get back to you within 24 hours.",
+        });
+        
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          subject: "",
+          message: ""
+        });
+      }
+    } catch (error) {
+      console.error('EmailJS Error:', error);
       toast({
-        title: "Message sent successfully!",
-        description: "We'll get back to you within 24 hours.",
+        title: "Failed to send message",
+        description: "Please try again or email us directly at cryptoinvest.helpdesk@gmail.com",
+        variant: "destructive"
       });
-      
-      // Reset form
-      setFormData({
-        name: "",
-        email: "",
-        subject: "",
-        message: ""
-      });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -90,7 +115,7 @@ export default function Contact() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-2">
-                support@cryptoinvest.com
+                cryptoinvest.helpdesk@gmail.com
               </p>
               <p className="text-xs text-muted-foreground">
                 We respond within 24 hours
@@ -195,21 +220,7 @@ export default function Contact() {
                   <Mail className="h-5 w-5 text-primary mt-0.5" />
                   <div>
                     <p className="font-medium">Email</p>
-                    <p className="text-sm text-muted-foreground">support@cryptoinvest.com</p>
-                    <p className="text-sm text-muted-foreground">business@cryptoinvest.com</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-primary mt-0.5" />
-                  <div>
-                    <p className="font-medium">Headquarters</p>
-                    <p className="text-sm text-muted-foreground">
-                      123 Crypto Boulevard<br />
-                      Financial District<br />
-                      New York, NY 10004<br />
-                      United States
-                    </p>
+                    <p className="text-sm text-muted-foreground">cryptoinvest.helpdesk@gmail.com</p>
                   </div>
                 </div>
 
@@ -252,7 +263,7 @@ export default function Contact() {
                   Found a security vulnerability? Please report it immediately to our security team.
                 </p>
                 <p className="text-sm font-medium">
-                  security@cryptoinvest.com
+                  cryptoinvest.helpdesk@gmail.com
                 </p>
               </CardContent>
             </Card>

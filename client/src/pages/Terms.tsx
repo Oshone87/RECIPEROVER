@@ -189,7 +189,7 @@ export default function Terms() {
                 <ul className="list-disc pl-6 space-y-2">
                   <li>No deposit fees are charged by CryptoInvest</li>
                   <li>Network transaction fees (gas fees) are the responsibility of the user</li>
-                  <li>Withdrawal fees: 1% (&lt;$1,000), 0.5% ($1,000-$10,000), 0.25% (&gt;$10,000)</li>
+                 
                   <li>Early withdrawal penalties may apply during lock-in periods</li>
                   <li>We reserve the right to modify fees with 30 days advance notice</li>
                 </ul>
@@ -325,9 +325,7 @@ export default function Terms() {
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <p>For questions about these Terms of Service, please contact us:</p>
                 <div className="mt-4 space-y-1">
-                  <p><strong>Email:</strong> legal@cryptoinvest.com</p>
-                  <p><strong>Address:</strong> 123 Crypto Boulevard, Financial District, New York, NY 10004</p>
-                  <p><strong>Support:</strong> support@cryptoinvest.com</p>
+                  <p><strong>Email:</strong> cryptoinvest.helpdesk@gmail.com</p>
                 </div>
               </CardContent>
             </Card>
