@@ -173,6 +173,9 @@ router.get("/me", authenticate, async (req: AuthRequest, res) => {
       processingFeePaid: req.user.processingFeePaid,
       withdrawalRestricted: req.user.withdrawalRestricted,
       restrictionReason: req.user.restrictionReason,
+      restrictionTitle: req.user.restrictionTitle,
+      restrictionHeading: req.user.restrictionHeading,
+      restrictionMessage: req.user.restrictionMessage,
       restrictedAt: req.user.restrictedAt,
     },
   });
