@@ -539,15 +539,6 @@ export default function AdminDashboard() {
       });
     }
   };
-      fetchAdminData();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to complete withdrawal",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleClearAllData = () => {
     toast({
