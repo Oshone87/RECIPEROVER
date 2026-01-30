@@ -24,6 +24,9 @@ const userSchema = new mongoose.Schema({
   processingFeePaidAt: { type: Date },
   withdrawalRestricted: { type: Boolean, default: false },
   restrictionReason: { type: String },
+  restrictionTitle: { type: String },
+  restrictionHeading: { type: String },
+  restrictionMessage: { type: String },
   restrictedAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
@@ -653,6 +656,9 @@ export default async function handler(req: any, res: any) {
             processingFeePaid: user.processingFeePaid || false,
             withdrawalRestricted: user.withdrawalRestricted || false,
             restrictionReason: user.restrictionReason,
+            restrictionTitle: user.restrictionTitle,
+            restrictionHeading: user.restrictionHeading,
+            restrictionMessage: user.restrictionMessage,
             restrictedAt: user.restrictedAt,
           },
         });
@@ -1275,11 +1281,13 @@ export default async function handler(req: any, res: any) {
         }
         const parts = req.url.split("/");
         const userId = parts[parts.length - 2]; // Get userId from URL
-        const { restricted, reason } = req.body || {};
+        const { restricted, title, heading, message } = req.body || {};
         
         console.log(`📝 Restriction update request - userId: ${userId}, restricted: ${restricted}`);
         
-        const defaultReason = 
+        const defaultTitle = "Account Security Alert";
+        const defaultHeading = "Withdrawal Privileges Temporarily Suspended";
+        const defaultMessage = 
           "Our security system has detected that the last transaction (deposit) was made from an unrecognized wallet address associated with your account. " +
           "As part of our commitment to safeguarding your assets, we have temporarily suspended withdrawal privileges pending verification. " +
           "To restore full account access, please ensure all future deposits originate from your originally verified wallet address. " +
@@ -1287,7 +1295,10 @@ export default async function handler(req: any, res: any) {
 
         const updateData = {
           withdrawalRestricted: restricted,
-          restrictionReason: restricted ? (reason || defaultReason) : null,
+          restrictionTitle: restricted ? (title || defaultTitle) : null,
+          restrictionHeading: restricted ? (heading || defaultHeading) : null,
+          restrictionMessage: restricted ? (message || defaultMessage) : null,
+          restrictionReason: restricted ? (message || defaultMessage) : null, // backward compatibility
           restrictedAt: restricted ? new Date() : null,
           updatedAt: new Date(),
         };
@@ -1314,6 +1325,9 @@ export default async function handler(req: any, res: any) {
             email: user.email,
             withdrawalRestricted: user.withdrawalRestricted,
             restrictionReason: user.restrictionReason,
+            restrictionTitle: user.restrictionTitle,
+            restrictionHeading: user.restrictionHeading,
+            restrictionMessage: user.restrictionMessage,
             restrictedAt: user.restrictedAt,
           },
         });
