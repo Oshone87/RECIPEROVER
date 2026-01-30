@@ -17,7 +17,10 @@ interface User {
   isAdmin: boolean; // computed from role
   processingFeePaid?: boolean; // tracks if user has paid withdrawal processing fee
   withdrawalRestricted?: boolean; // tracks if user is restricted from withdrawals
-  restrictionReason?: string; // reason for withdrawal restriction
+  restrictionReason?: string; // reason for withdrawal restriction (legacy)
+  restrictionTitle?: string; // custom title for restriction modal
+  restrictionHeading?: string; // custom heading for restriction modal
+  restrictionMessage?: string; // custom message for restriction modal
   restrictedAt?: string; // timestamp when restriction was placed
   balance: {
     USDT: number;

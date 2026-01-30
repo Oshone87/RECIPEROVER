@@ -12,6 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -43,6 +46,9 @@ interface DatabaseUser {
   kycStatus: string;
   withdrawalRestricted?: boolean;
   restrictionReason?: string;
+  restrictionTitle?: string;
+  restrictionHeading?: string;
+  restrictionMessage?: string;
   restrictedAt?: string;
   createdAt: string;
 }
@@ -166,6 +172,13 @@ export default function AdminDashboard() {
   const [kycViewOpen, setKycViewOpen] = useState(false);
   const [kycViewLoading, setKycViewLoading] = useState(false);
   const [kycDetail, setKycDetail] = useState<any | null>(null);
+
+  // Restriction dialog state
+  const [restrictionDialogOpen, setRestrictionDialogOpen] = useState(false);
+  const [restrictingUser, setRestrictingUser] = useState<DatabaseUser | null>(null);
+  const [restrictionTitle, setRestrictionTitle] = useState("");
+  const [restrictionHeading, setRestrictionHeading] = useState("");
+  const [restrictionMessage, setRestrictionMessage] = useState("");
 
   // Check admin access and fetch data
   useEffect(() => {
@@ -435,6 +448,97 @@ export default function AdminDashboard() {
         title: "Withdrawal Completed",
         description: "Withdrawal has been completed successfully",
       });
+      fetchAdminData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to complete withdrawal",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Restriction Handlers
+  const handleRestrictUser = async () => {
+    if (!restrictingUser) return;
+
+    try {
+      await apiClient.updateWithdrawalRestriction(
+        restrictingUser._id,
+        true,
+        restrictionTitle.trim() || undefined,
+        restrictionHeading.trim() || undefined,
+        restrictionMessage.trim() || undefined
+      );
+
+      // Update local state
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user._id === restrictingUser._id
+            ? {
+                ...user,
+                withdrawalRestricted: true,
+                restrictionTitle: restrictionTitle.trim() || undefined,
+                restrictionHeading: restrictionHeading.trim() || undefined,
+                restrictionMessage: restrictionMessage.trim() || undefined,
+              }
+            : user
+        )
+      );
+
+      toast({
+        title: "Withdrawal restricted",
+        description: `User ${restrictingUser.email} can no longer withdraw funds`,
+      });
+
+      // Close dialog and reset
+      setRestrictionDialogOpen(false);
+      setRestrictingUser(null);
+      setRestrictionTitle("");
+      setRestrictionHeading("");
+      setRestrictionMessage("");
+    } catch (e: any) {
+      console.error('Restriction update error:', e);
+      toast({
+        title: "Action failed",
+        description: e?.message || "Failed to update withdrawal restriction",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUnrestrictUser = async (user: DatabaseUser) => {
+    try {
+      await apiClient.updateWithdrawalRestriction(user._id, false);
+
+      // Update local state
+      setUsers(prevUsers =>
+        prevUsers.map(u =>
+          u._id === user._id
+            ? {
+                ...u,
+                withdrawalRestricted: false,
+                restrictionTitle: undefined,
+                restrictionHeading: undefined,
+                restrictionMessage: undefined,
+              }
+            : u
+        )
+      );
+
+      toast({
+        title: "Withdrawal restriction removed",
+        description: `User ${user.email} can now withdraw funds`,
+      });
+    } catch (e: any) {
+      console.error('Restriction update error:', e);
+      toast({
+        title: "Action failed",
+        description: e?.message || "Failed to update withdrawal restriction",
+        variant: "destructive",
+      });
+    }
+  };
       fetchAdminData();
     } catch (error) {
       toast({
@@ -744,38 +848,17 @@ export default function AdminDashboard() {
                                     variant={
                                       u.withdrawalRestricted ? "default" : "outline"
                                     }
-                                    onClick={async () => {
-                                      try {
-                                        const newRestricted = !u.withdrawalRestricted;
-                                        console.log('Updating restriction for user:', u.email, 'to:', newRestricted);
-                                        
-                                        await apiClient.updateWithdrawalRestriction(
-                                          u._id,
-                                          newRestricted
-                                        );
-                                        
-                                        // Update local state immediately for instant UI feedback
-                                        setUsers(prevUsers => 
-                                          prevUsers.map(user => 
-                                            user._id === u._id 
-                                              ? { ...user, withdrawalRestricted: newRestricted }
-                                              : user
-                                          )
-                                        );
-                                        
-                                        toast({
-                                          title: newRestricted
-                                            ? "Withdrawal restricted"
-                                            : "Withdrawal restriction removed",
-                                          description: `User ${u.email} ${newRestricted ? 'can no longer' : 'can now'} withdraw funds`,
-                                        });
-                                      } catch (e: any) {
-                                        console.error('Restriction update error:', e);
-                                        toast({
-                                          title: "Action failed",
-                                          description: e?.message || "Failed to update withdrawal restriction",
-                                          variant: "destructive",
-                                        });
+                                    onClick={() => {
+                                      if (u.withdrawalRestricted) {
+                                        // Unrestrict - no dialog needed
+                                        handleUnrestrictUser(u);
+                                      } else {
+                                        // Restrict - open dialog for custom message
+                                        setRestrictingUser(u);
+                                        setRestrictionTitle("");
+                                        setRestrictionHeading("");
+                                        setRestrictionMessage("");
+                                        setRestrictionDialogOpen(true);
                                       }
                                     }}
                                   >
@@ -1919,6 +2002,107 @@ export default function AdminDashboard() {
               No details available
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Restriction Dialog */}
+      <Dialog open={restrictionDialogOpen} onOpenChange={setRestrictionDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0">
+          <DialogHeader>
+            <DialogTitle className="text-base sm:text-lg">Restrict Withdrawal Access</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Enter custom alert details that will be shown to {restrictingUser?.email} when they try to withdraw or view the restriction alert.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="restriction-title" className="text-sm">
+                Alert Title
+              </Label>
+              <Input
+                id="restriction-title"
+                placeholder="e.g., Account Security Alert"
+                value={restrictionTitle}
+                onChange={(e) => setRestrictionTitle(e.target.value)}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                If left empty, defaults to: "Account Security Alert"
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="restriction-heading" className="text-sm">
+                Main Heading
+              </Label>
+              <Input
+                id="restriction-heading"
+                placeholder="e.g., Withdrawal Privileges..."
+                value={restrictionHeading}
+                onChange={(e) => setRestrictionHeading(e.target.value)}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                If left empty, defaults to: "Withdrawal Privileges Temporarily Suspended"
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="restriction-message" className="text-sm">
+                Detailed Message
+              </Label>
+              <Textarea
+                id="restriction-message"
+                placeholder="Enter the detailed reason for restriction..."
+                value={restrictionMessage}
+                onChange={(e) => setRestrictionMessage(e.target.value)}
+                rows={6}
+                className="resize-none text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                If left empty, shows default security message about unrecognized wallet address.
+              </p>
+            </div>
+
+            <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 sm:p-4">
+              <h4 className="font-semibold text-xs sm:text-sm mb-2">Preview:</h4>
+              <div className="space-y-2 text-xs sm:text-sm">
+                <p className="font-semibold text-red-600 break-words">
+                  {restrictionTitle || "Account Security Alert"}
+                </p>
+                <p className="font-semibold break-words">
+                  {restrictionHeading || "Withdrawal Privileges Temporarily Suspended"}
+                </p>
+                <p className="text-muted-foreground break-words">
+                  {restrictionMessage ? (restrictionMessage.length > 150 ? restrictionMessage.substring(0, 150) + "..." : restrictionMessage) : "Our security system has detected that the last transaction (deposit) was made from an unrecognized wallet address..."}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRestrictionDialogOpen(false);
+                  setRestrictingUser(null);
+                  setRestrictionTitle("");
+                  setRestrictionHeading("");
+                  setRestrictionMessage("");
+                }}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRestrictUser}
+                variant="destructive"
+                className="w-full sm:w-auto"
+              >
+                Apply Restriction
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

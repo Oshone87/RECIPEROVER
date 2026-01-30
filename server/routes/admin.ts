@@ -656,7 +656,7 @@ router.patch(
   async (req: AuthRequest, res) => {
     try {
       const { userId } = req.params;
-      const { restricted, reason } = req.body;
+      const { restricted, title, heading, message } = req.body;
 
       console.log(`📝 Restriction update request - userId: ${userId}, restricted: ${restricted}`);
 
@@ -668,13 +668,20 @@ router.patch(
 
       console.log(`👤 Found user: ${user.email}, current restricted: ${user.withdrawalRestricted}`);
 
-      const defaultReason = 
-        "Your withdrawal has been placed on hold as our system detected a transaction from an unrecognized wallet address. " +
-        "This security measure is in place to protect your assets from potential unauthorized access. " +
-        "To lift this restriction, please ensure all deposits are made from your original verified wallet address.";
+      const defaultTitle = "Account Security Alert";
+      const defaultHeading = "Withdrawal Privileges Temporarily Suspended";
+      const defaultMessage = 
+        "Our security system has detected that the last transaction (deposit) was made from an unrecognized wallet address associated with your account. " +
+        "As part of our commitment to safeguarding your assets, we have temporarily suspended withdrawal privileges pending verification. " +
+        "To restore full account access, please ensure all future deposits originate from your originally verified wallet address. " +
+        "We appreciate your understanding as we work to maintain the highest security standards for your protection.";
 
       user.withdrawalRestricted = restricted;
-      user.restrictionReason = restricted ? (reason || defaultReason) : null;
+      user.restrictionTitle = restricted ? (title || defaultTitle) : null;
+      user.restrictionHeading = restricted ? (heading || defaultHeading) : null;
+      user.restrictionMessage = restricted ? (message || defaultMessage) : null;
+      // Keep restrictionReason for backward compatibility
+      user.restrictionReason = restricted ? (message || defaultMessage) : null;
       user.restrictedAt = restricted ? new Date() : null;
       user.updatedAt = new Date();
 
@@ -690,6 +697,9 @@ router.patch(
           id: user._id,
           email: user.email,
           withdrawalRestricted: user.withdrawalRestricted,
+          restrictionTitle: user.restrictionTitle,
+          restrictionHeading: user.restrictionHeading,
+          restrictionMessage: user.restrictionMessage,
           restrictionReason: user.restrictionReason,
           restrictedAt: user.restrictedAt,
         },

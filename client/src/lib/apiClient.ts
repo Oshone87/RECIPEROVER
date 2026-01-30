@@ -222,11 +222,22 @@ class ApiClient {
     return this.handleResponse(response);
   }
 
-  async updateWithdrawalRestriction(userId: string, restricted: boolean, reason?: string) {
+  async updateWithdrawalRestriction(
+    userId: string, 
+    restricted: boolean, 
+    title?: string,
+    heading?: string,
+    message?: string
+  ) {
     const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/restriction`, {
       method: "PATCH",
       headers: this.getAuthHeaders(),
-      body: JSON.stringify({ restricted, reason }),
+      body: JSON.stringify({ 
+        restricted, 
+        title,
+        heading,
+        message
+      }),
     });
     return this.handleResponse(response);
   }

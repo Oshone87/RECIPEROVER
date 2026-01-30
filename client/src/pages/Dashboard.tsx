@@ -239,20 +239,22 @@ export default function Dashboard() {
 
       {/* Withdrawal Restriction Modal */}
       <Dialog open={restrictionModalOpen} onOpenChange={setRestrictionModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md mx-4 sm:mx-0">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="h-6 w-6" />
-              Account Security Alert
+            <DialogTitle className="flex items-center gap-2 text-red-600 text-base sm:text-lg">
+              <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+              <span className="break-words">
+                {user?.restrictionTitle || "Account Security Alert"}
+              </span>
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <h4 className="font-semibold text-red-900 dark:text-red-100 mb-2">
-                Withdrawal Privileges Temporarily Suspended
+            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3 sm:p-4">
+              <h4 className="font-semibold text-sm sm:text-base text-red-900 dark:text-red-100 mb-2 break-words">
+                {user?.restrictionHeading || "Withdrawal Privileges Temporarily Suspended"}
               </h4>
-              <p className="text-sm text-red-800 dark:text-red-200 leading-relaxed">
-                {user?.restrictionReason || 
+              <p className="text-xs sm:text-sm text-red-800 dark:text-red-200 leading-relaxed break-words">
+                {user?.restrictionMessage || 
                   "Our security system has detected that the last transaction (deposit) was made from an unrecognized wallet address associated with your account. " +
                   "As part of our commitment to safeguarding your assets, we have temporarily suspended withdrawal privileges pending verification. " +
                   "To restore full account access, please ensure all future deposits originate from your originally verified wallet address. " +
@@ -261,7 +263,7 @@ export default function Dashboard() {
             </div>
             <div className="flex items-start gap-2 text-xs text-muted-foreground">
               <Clock className="h-4 w-4 mt-0.5 shrink-0" />
-              <p>
+              <p className="break-words">
                 This restriction was applied on {user?.restrictedAt ? new Date(user.restrictedAt).toLocaleDateString() : 'recently'} and will remain in effect until verified.
               </p>
             </div>
