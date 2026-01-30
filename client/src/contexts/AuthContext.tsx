@@ -87,6 +87,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         processingFeePaid: !!u.processingFeePaid,
         withdrawalRestricted: !!u.withdrawalRestricted,
         restrictionReason: u.restrictionReason,
+        restrictionTitle: u.restrictionTitle,
+        restrictionHeading: u.restrictionHeading,
+        restrictionMessage: u.restrictionMessage,
         restrictedAt: u.restrictedAt,
         balance: { USDT: 0, BTC: 0, ETH: 0, BNB: 0 },
       });
@@ -128,6 +131,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         processingFeePaid: !!u.processingFeePaid,
         withdrawalRestricted: !!u.withdrawalRestricted,
         restrictionReason: u.restrictionReason,
+        restrictionTitle: u.restrictionTitle,
+        restrictionHeading: u.restrictionHeading,
+        restrictionMessage: u.restrictionMessage,
         restrictedAt: u.restrictedAt,
         balance: { USDT: 0, BTC: 0, ETH: 0, BNB: 0 },
       } as User;
