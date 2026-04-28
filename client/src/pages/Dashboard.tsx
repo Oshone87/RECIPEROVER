@@ -347,7 +347,7 @@ export default function Dashboard() {
                 <div className="space-y-1 text-center sm:text-left">
                   <p className="text-sm opacity-90">Total Crypto Balance</p>
                   <p className="text-3xl sm:text-4xl font-bold font-mono">
-                    
+                    ${cryptoBalance.toLocaleString()}
                   </p>
                 </div>
 
@@ -355,13 +355,13 @@ export default function Dashboard() {
                   <div className="space-y-1 text-center sm:text-left">
                     <p className="text-xs sm:text-sm opacity-90">Available Crypto</p>
                     <p className="text-lg sm:text-2xl font-mono">
-                      
+                      ${cryptoBalance.toLocaleString()}
                     </p>
                   </div>
                   <div className="space-y-1 text-center sm:text-left">
                     <p className="text-xs sm:text-sm opacity-90">Invested Crypto</p>
                     <p className="text-lg sm:text-2xl font-mono">
-                      
+                      ${cryptoInvested.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -460,7 +460,7 @@ export default function Dashboard() {
                               </div>
                             </td>
                             <td className="py-2 px-2 text-xs font-mono">{tx.asset}</td>
-                            <td className="py-2 px-2 text-xs font-mono text-right">{tx.type === "deposit" ? "+" : "-"}</td>
+                            <td className="py-2 px-2 text-xs font-mono text-right">{tx.type === "deposit" ? "+" : "-"}${tx.amount.toLocaleString()}</td>
                             <td className="py-2 px-2">
                               <Badge variant={tx.status === "completed" ? "default" : tx.status === "pending" || tx.status === "approved" ? "secondary" : "destructive"} className="text-xs capitalize">{tx.status}</Badge>
                               <div>
@@ -502,7 +502,7 @@ export default function Dashboard() {
                 <div className="space-y-1 text-center sm:text-left">
                   <p className="text-sm text-slate-300 opacity-90">Total Stock Balance</p>
                   <p className="text-3xl sm:text-4xl font-bold font-mono">
-                    
+                    ${stockBalance.toLocaleString()}
                   </p>
                 </div>
 
@@ -510,13 +510,13 @@ export default function Dashboard() {
                   <div className="space-y-1 text-center sm:text-left">
                     <p className="text-xs sm:text-sm text-slate-300 opacity-90">Available Stocks</p>
                     <p className="text-lg sm:text-2xl font-mono">
-                      
+                      ${stockBalance.toLocaleString()}
                     </p>
                   </div>
                   <div className="space-y-1 text-center sm:text-left">
                     <p className="text-xs sm:text-sm text-slate-300 opacity-90">Invested Stocks</p>
                     <p className="text-lg sm:text-2xl font-mono">
-                      
+                      ${stockInvested.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -559,7 +559,7 @@ export default function Dashboard() {
                    {stockAssets.map(asset => (
                      <div key={asset} className="flex flex-col items-center justify-center p-4 rounded-lg bg-secondary/50 border">
                         <span className="text-sm font-semibold text-muted-foreground">{asset}</span>
-                        <span className="text-lg font-mono font-bold"></span>
+                        <span className="text-lg font-mono font-bold">${getAssetBalance(asset).toLocaleString()}</span>
                      </div>
                    ))}
                 </div>
@@ -590,7 +590,7 @@ export default function Dashboard() {
                               </div>
                             </td>
                             <td className="py-2 px-2 text-xs font-mono">{tx.asset}</td>
-                            <td className="py-2 px-2 text-xs font-mono text-right">{tx.type === "deposit" ? "+" : "-"}</td>
+                            <td className="py-2 px-2 text-xs font-mono text-right">{tx.type === "deposit" ? "+" : "-"}${tx.amount.toLocaleString()}</td>
                             <td className="py-2 px-2">
                               <Badge variant={tx.status === "completed" ? "default" : tx.status === "pending" || tx.status === "approved" ? "secondary" : "destructive"} className="text-xs capitalize">{tx.status}</Badge>
                               <div>
