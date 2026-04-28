@@ -476,9 +476,21 @@ export default async function handler(req: any, res: any) {
         BTC: "bitcoin" as any,
         ETH: "ethereum" as any,
         SOL: "solana" as any,
+        TSLA: "tesla" as any,
+        AAPL: "apple" as any,
+        GOOGL: "google" as any,
+        AMZN: "amazon" as any,
+        MSFT: "microsoft" as any,
+        NVDA: "nvidia" as any,
         bitcoin: "bitcoin" as any,
         ethereum: "ethereum" as any,
         solana: "solana" as any,
+        tesla: "tesla" as any,
+        apple: "apple" as any,
+        google: "google" as any,
+        amazon: "amazon" as any,
+        microsoft: "microsoft" as any,
+        nvidia: "nvidia" as any,
       };
       return (fieldMap as any)[asset] || null;
     };
@@ -494,6 +506,12 @@ export default async function handler(req: any, res: any) {
         bitcoin: 0,
         ethereum: 0,
         solana: 0,
+        tesla: 0,
+        apple: 0,
+        google: 0,
+        amazon: 0,
+        microsoft: 0,
+        nvidia: 0,
       };
 
       // For each candidate, check maturity and atomically flip to completed to avoid double payout
@@ -523,34 +541,36 @@ export default async function handler(req: any, res: any) {
               Number(inv.amount || 0) * dailyRate * Number(inv.period || 0);
             const totalReturn = Number(inv.amount || 0) + earnings;
             const assetKey = (inv.asset || "").toLowerCase();
-            if (assetKey.includes("btc") || assetKey === "bitcoin") {
-              creditByAsset.bitcoin += totalReturn;
-            } else if (assetKey.includes("eth") || assetKey === "ethereum") {
-              creditByAsset.ethereum += totalReturn;
-            } else if (assetKey.includes("sol") || assetKey === "solana") {
-              creditByAsset.solana += totalReturn;
-            } else {
-              // default to totalBalance only if unknown asset (rare)
-              creditByAsset.bitcoin += 0; // no-op, but keeps structure consistent
-            }
+            
+            if (assetKey.includes("btc") || assetKey === "bitcoin") creditByAsset.bitcoin += totalReturn;
+            else if (assetKey.includes("eth") || assetKey === "ethereum") creditByAsset.ethereum += totalReturn;
+            else if (assetKey.includes("sol") || assetKey === "solana") creditByAsset.solana += totalReturn;
+            else if (assetKey.includes("tsla") || assetKey === "tesla") creditByAsset.tesla += totalReturn;
+            else if (assetKey.includes("aapl") || assetKey === "apple") creditByAsset.apple += totalReturn;
+            else if (assetKey.includes("googl") || assetKey === "google") creditByAsset.google += totalReturn;
+            else if (assetKey.includes("amzn") || assetKey === "amazon") creditByAsset.amazon += totalReturn;
+            else if (assetKey.includes("msft") || assetKey === "microsoft") creditByAsset.microsoft += totalReturn;
+            else if (assetKey.includes("nvda") || assetKey === "nvidia") creditByAsset.nvidia += totalReturn;
           }
         }
       }
 
       // Apply credits if any
-      const totalCredit = Object.values(creditByAsset).reduce(
-        (a, b) => a + b,
-        0
-      );
+      const totalCredit = Object.values(creditByAsset).reduce((a, b) => a + b, 0);
       if (totalCredit > 0) {
         const bal = await AssetBalance.findOne({ userId });
         if (bal) {
-          // @ts-ignore dynamic index
           bal.bitcoin = Number(bal.bitcoin || 0) + creditByAsset.bitcoin;
-          // @ts-ignore dynamic index
           bal.ethereum = Number(bal.ethereum || 0) + creditByAsset.ethereum;
-          // @ts-ignore dynamic index
           bal.solana = Number(bal.solana || 0) + creditByAsset.solana;
+          // Dynamically set stock balances if they exist on schema
+          if (creditByAsset.tesla > 0) bal.set('tesla', Number(bal.get('tesla') || 0) + creditByAsset.tesla);
+          if (creditByAsset.apple > 0) bal.set('apple', Number(bal.get('apple') || 0) + creditByAsset.apple);
+          if (creditByAsset.google > 0) bal.set('google', Number(bal.get('google') || 0) + creditByAsset.google);
+          if (creditByAsset.amazon > 0) bal.set('amazon', Number(bal.get('amazon') || 0) + creditByAsset.amazon);
+          if (creditByAsset.microsoft > 0) bal.set('microsoft', Number(bal.get('microsoft') || 0) + creditByAsset.microsoft);
+          if (creditByAsset.nvidia > 0) bal.set('nvidia', Number(bal.get('nvidia') || 0) + creditByAsset.nvidia);
+          
           bal.totalBalance = Number(bal.totalBalance || 0) + totalCredit;
           await bal.save();
         }
