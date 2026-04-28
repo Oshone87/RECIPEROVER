@@ -4,9 +4,14 @@ const investmentSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   tier: { type: String, enum: ["Silver", "Gold", "Platinum"], required: true },
   amount: { type: Number, required: true },
+  assetType: {
+    type: String,
+    enum: ["crypto", "stock"],
+    default: "crypto",
+  },
   asset: {
     type: String,
-    enum: ["bitcoin", "ethereum", "solana"],
+    enum: ["bitcoin", "ethereum", "solana", "TSLA", "AAPL", "GOOGL", "AMZN", "MSFT", "NVDA"],
     required: true,
   },
   period: { type: Number, required: true }, // days

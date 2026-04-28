@@ -130,7 +130,7 @@ export default function AdminDashboard() {
   >("active");
   const [invEmailSearch, setInvEmailSearch] = useState("");
   const [invAssetFilter, setInvAssetFilter] = useState<
-    "all" | "BTC" | "ETH" | "SOL"
+    "all" | "BTC" | "ETH" | "SOL" | "TSLA" | "AAPL" | "GOOGL" | "AMZN" | "MSFT" | "NVDA"
   >("all");
   const [invTierFilter, setInvTierFilter] = useState<
     "all" | "Silver" | "Gold" | "Platinum"

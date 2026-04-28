@@ -179,6 +179,7 @@ export function InvestmentModal({ open, onOpenChange }: InvestmentModalProps) {
     const success = await createInvestment({
       tier: selectedTier.label,
       asset,
+      assetType: "crypto",
       amount,
       apr: selectedTier.apr, // server computes final APR and x2 when applicable
       period,

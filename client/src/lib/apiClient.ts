@@ -397,6 +397,28 @@ class ApiClient {
     return this.handleResponse(response);
   }
 
+  // Stock Market APIs
+  async getStockPrices() {
+    const response = await fetch(`${API_BASE_URL}/stocks/prices`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async getStockQuote(symbol: string) {
+    const response = await fetch(`${API_BASE_URL}/stocks/quote/${symbol}`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async getStockList() {
+    const response = await fetch(`${API_BASE_URL}/stocks/list`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
   // Utility method to clear auth token
   logout() {
     localStorage.removeItem("authToken");

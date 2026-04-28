@@ -5,6 +5,7 @@ import investmentRoutes from "./routes/investments";
 import balanceRoutes from "./routes/balances";
 import adminRoutes from "./routes/admin";
 import requestRoutes from "./routes/requests";
+import stockRoutes from "./routes/stocks";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
@@ -22,6 +23,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin routes
   app.use("/api/admin", adminRoutes);
 
+  // Stock market data routes
+  app.use("/api/stocks", stockRoutes);
+
   const httpServer = createServer(app);
   return httpServer;
 }
+

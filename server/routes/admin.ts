@@ -370,19 +370,26 @@ router.put(
             });
           }
 
-          // Map asset symbol to balance field
-          const assetField =
-            depositRequest.asset.toLowerCase() === "btc"
-              ? "bitcoin"
-              : depositRequest.asset.toLowerCase() === "eth"
-              ? "ethereum"
-              : depositRequest.asset.toLowerCase() === "sol"
-              ? "solana"
-              : "bitcoin";
+          // Map asset symbol to balance field (supports crypto + stocks)
+          const assetFieldMap: Record<string, string> = {
+            btc: "bitcoin", bitcoin: "bitcoin",
+            eth: "ethereum", ethereum: "ethereum",
+            sol: "solana", solana: "solana",
+            tsla: "tesla", tesla: "tesla",
+            aapl: "apple", apple: "apple",
+            googl: "google", google: "google",
+            amzn: "amazon", amazon: "amazon",
+            msft: "microsoft", microsoft: "microsoft",
+            nvda: "nvidia", nvidia: "nvidia",
+          };
+          const assetField = assetFieldMap[depositRequest.asset.toLowerCase()] || "bitcoin";
 
           // Update balance
-          assetBalance[assetField] += depositRequest.amount;
-          assetBalance.totalBalance += depositRequest.amount;
+          (assetBalance as any)[assetField] = ((assetBalance as any)[assetField] || 0) + depositRequest.amount;
+          assetBalance.totalBalance =
+            (assetBalance.bitcoin || 0) + (assetBalance.ethereum || 0) + (assetBalance.solana || 0) +
+            ((assetBalance as any).tesla || 0) + ((assetBalance as any).apple || 0) + ((assetBalance as any).google || 0) +
+            ((assetBalance as any).amazon || 0) + ((assetBalance as any).microsoft || 0) + ((assetBalance as any).nvidia || 0);
           assetBalance.updatedAt = new Date();
           await assetBalance.save();
 
@@ -491,20 +498,29 @@ router.put(
         });
 
         if (assetBalance) {
-          const assetField =
-            withdrawalRequest.asset.toLowerCase() === "btc"
-              ? "bitcoin"
-              : withdrawalRequest.asset.toLowerCase() === "eth"
-              ? "ethereum"
-              : withdrawalRequest.asset.toLowerCase() === "sol"
-              ? "solana"
-              : "bitcoin";
+          // Map asset symbol to balance field (supports crypto + stocks)
+          const wAssetFieldMap: Record<string, string> = {
+            btc: "bitcoin", bitcoin: "bitcoin",
+            eth: "ethereum", ethereum: "ethereum",
+            sol: "solana", solana: "solana",
+            tsla: "tesla", tesla: "tesla",
+            aapl: "apple", apple: "apple",
+            googl: "google", google: "google",
+            amzn: "amazon", amazon: "amazon",
+            msft: "microsoft", microsoft: "microsoft",
+            nvda: "nvidia", nvidia: "nvidia",
+          };
+          const assetField = wAssetFieldMap[withdrawalRequest.asset.toLowerCase()] || "bitcoin";
 
           // Check if user has sufficient balance
-          if (assetBalance[assetField] >= withdrawalRequest.amount) {
+          const currentBal = (assetBalance as any)[assetField] || 0;
+          if (currentBal >= withdrawalRequest.amount) {
             // Deduct from balance
-            assetBalance[assetField] -= withdrawalRequest.amount;
-            assetBalance.totalBalance -= withdrawalRequest.amount;
+            (assetBalance as any)[assetField] = currentBal - withdrawalRequest.amount;
+            assetBalance.totalBalance =
+              (assetBalance.bitcoin || 0) + (assetBalance.ethereum || 0) + (assetBalance.solana || 0) +
+              ((assetBalance as any).tesla || 0) + ((assetBalance as any).apple || 0) + ((assetBalance as any).google || 0) +
+              ((assetBalance as any).amazon || 0) + ((assetBalance as any).microsoft || 0) + ((assetBalance as any).nvidia || 0);
             assetBalance.updatedAt = new Date();
             await assetBalance.save();
 

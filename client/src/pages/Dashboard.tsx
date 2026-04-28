@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { InvestmentGrowthChart } from "@/components/InvestmentGrowthChart";
 import { InvestmentModal } from "@/components/InvestmentModal";
+import { StockInvestmentModal } from "@/components/StockInvestmentModal";
 import { WithdrawalModal } from "@/components/WithdrawalModal";
 import { DepositModal } from "@/components/DepositModal";
 import { ProcessingFeeExplanationModal } from "@/components/ProcessingFeeExplanationModal";
@@ -33,6 +34,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
+  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInvestment } from "@/contexts/InvestmentContext";
@@ -67,6 +69,7 @@ export default function Dashboard() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
   const [restrictionModalOpen, setRestrictionModalOpen] = useState(false);
+  const [stockModalOpen, setStockModalOpen] = useState(false);
 
   // Real user data from API
   const [realBalances, setRealBalances] = useState({
@@ -384,6 +387,17 @@ export default function Dashboard() {
                 <span className="text-sm sm:text-base">New Investment</span>
               </Button>
 
+              <Button
+                size="lg"
+                variant="secondary"
+                onClick={() => setStockModalOpen(true)}
+                data-testid="button-new-stock-investment"
+                className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-700 hover:to-cyan-700 text-white border-0"
+              >
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                <span className="text-sm sm:text-base">Stock Investment</span>
+              </Button>
+
               <TooltipProvider>
                 <Tooltip open={!kycInfo.isVerified ? undefined : false}>
                   <TooltipTrigger asChild>
@@ -550,6 +564,15 @@ export default function Dashboard() {
           setModalOpen(open);
           if (!open) {
             // refresh on close in case an investment was created
+            fetchUserData();
+          }
+        }}
+      />
+      <StockInvestmentModal
+        open={stockModalOpen}
+        onOpenChange={(open) => {
+          setStockModalOpen(open);
+          if (!open) {
             fetchUserData();
           }
         }}

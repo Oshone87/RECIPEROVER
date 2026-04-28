@@ -5,6 +5,21 @@ import { authenticate, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
+// Helper: map asset identifiers to backend balance field names
+const ASSET_TO_FIELD: Record<string, string> = {
+  bitcoin: "bitcoin",
+  ethereum: "ethereum",
+  solana: "solana",
+  TSLA: "tesla",
+  AAPL: "apple",
+  GOOGL: "google",
+  AMZN: "amazon",
+  MSFT: "microsoft",
+  NVDA: "nvidia",
+};
+
+const STOCK_SYMBOLS = ["TSLA", "AAPL", "GOOGL", "AMZN", "MSFT", "NVDA"];
+
 // Get user's investments
 router.get("/", authenticate, async (req: AuthRequest, res) => {
   try {
@@ -17,6 +32,7 @@ router.get("/", authenticate, async (req: AuthRequest, res) => {
       id: inv._id.toString(),
       tier: inv.tier,
       asset: inv.asset,
+      assetType: inv.assetType || "crypto",
       amount: inv.amount,
       apr: inv.apr,
       period: inv.period,
@@ -54,6 +70,16 @@ router.post("/", authenticate, async (req: AuthRequest, res) => {
       });
     }
 
+    // Determine asset type
+    const isStock = STOCK_SYMBOLS.includes(asset);
+    const assetType = isStock ? "stock" : "crypto";
+
+    // Get the balance field for this asset
+    const balanceField = ASSET_TO_FIELD[asset];
+    if (!balanceField) {
+      return res.status(400).json({ message: `Invalid asset: ${asset}` });
+    }
+
     // Check user's asset balance
     const userBalance = await AssetBalance.findOne({ userId: req.userId });
     if (!userBalance) {
@@ -61,9 +87,7 @@ router.post("/", authenticate, async (req: AuthRequest, res) => {
     }
 
     // Check if user has enough balance in the specific asset
-    const assetBalance = userBalance[
-      asset as keyof typeof userBalance
-    ] as number;
+    const assetBalance = (userBalance as any)[balanceField] as number || 0;
     if (assetBalance < amount) {
       return res.status(400).json({
         message: `Insufficient ${asset} balance. Available: ${assetBalance}, Required: ${amount}`,
@@ -89,6 +113,7 @@ router.post("/", authenticate, async (req: AuthRequest, res) => {
       tier,
       amount,
       asset,
+      assetType,
       period,
       apr,
       startDate,
@@ -98,12 +123,15 @@ router.post("/", authenticate, async (req: AuthRequest, res) => {
     await investment.save();
 
     // Deduct from user's asset balance
-    (userBalance as any)[asset] = assetBalance - amount;
+    (userBalance as any)[balanceField] = assetBalance - amount;
+    // Recalculate total balance (crypto + stocks)
     userBalance.totalBalance =
-      userBalance.bitcoin + userBalance.ethereum + userBalance.solana;
+      (userBalance.bitcoin || 0) + (userBalance.ethereum || 0) + (userBalance.solana || 0) +
+      ((userBalance as any).tesla || 0) + ((userBalance as any).apple || 0) + ((userBalance as any).google || 0) +
+      ((userBalance as any).amazon || 0) + ((userBalance as any).microsoft || 0) + ((userBalance as any).nvidia || 0);
     await userBalance.save();
 
-    console.log(`✅ Investment created successfully: ${investment._id}`);
+    console.log(`✅ ${assetType} investment created successfully: ${investment._id}`);
 
     res.status(201).json({
       investment,
@@ -132,6 +160,7 @@ router.get("/:id", authenticate, async (req: AuthRequest, res) => {
       id: investment._id.toString(),
       tier: investment.tier,
       asset: investment.asset,
+      assetType: investment.assetType || "crypto",
       amount: investment.amount,
       apr: investment.apr,
       period: investment.period,

@@ -12,6 +12,7 @@ interface Investment {
   id: string;
   tier: string;
   asset: string;
+  assetType: "crypto" | "stock";
   amount: number;
   apr: number;
   period: number;
@@ -36,6 +37,12 @@ interface AssetBalance {
   BTC: number;
   ETH: number;
   SOL: number;
+  TSLA: number;
+  AAPL: number;
+  GOOGL: number;
+  AMZN: number;
+  MSFT: number;
+  NVDA: number;
 }
 
 interface InvestmentContextType {
@@ -91,6 +98,12 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
     BTC: 0,
     ETH: 0,
     SOL: 0,
+    TSLA: 0,
+    AAPL: 0,
+    GOOGL: 0,
+    AMZN: 0,
+    MSFT: 0,
+    NVDA: 0,
   });
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -152,7 +165,7 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
       ]);
 
       // Update balances (available wallet funds)
-      let mappedBalances: AssetBalance = { BTC: 0, ETH: 0, SOL: 0 };
+      let mappedBalances: AssetBalance = { BTC: 0, ETH: 0, SOL: 0, TSLA: 0, AAPL: 0, GOOGL: 0, AMZN: 0, MSFT: 0, NVDA: 0 };
       if (balancesResponse.balances) {
         const backendBalances = balancesResponse.balances;
 
@@ -161,6 +174,12 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
           BTC: backendBalances.bitcoin || 0,
           ETH: backendBalances.ethereum || 0,
           SOL: backendBalances.solana || 0,
+          TSLA: backendBalances.tesla || 0,
+          AAPL: backendBalances.apple || 0,
+          GOOGL: backendBalances.google || 0,
+          AMZN: backendBalances.amazon || 0,
+          MSFT: backendBalances.microsoft || 0,
+          NVDA: backendBalances.nvidia || 0,
         };
 
         setAssetBalances(mappedBalances);
@@ -214,6 +233,7 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
             id: inv._id,
             tier: inv.tier,
             asset: inv.asset,
+            assetType: inv.assetType || "crypto",
             amount: inv.amount,
             apr,
             period: inv.period,
@@ -322,7 +342,7 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
     } else {
       // Clear data when user logs out
       setBalance(0);
-      setAssetBalances({ BTC: 0, ETH: 0, SOL: 0 });
+      setAssetBalances({ BTC: 0, ETH: 0, SOL: 0, TSLA: 0, AAPL: 0, GOOGL: 0, AMZN: 0, MSFT: 0, NVDA: 0 });
       setInvestments([]);
       setTransactions([]);
     }
@@ -383,6 +403,12 @@ export function InvestmentProvider({ children }: { children: ReactNode }) {
       BTC: "bitcoin",
       ETH: "ethereum",
       SOL: "solana",
+      TSLA: "TSLA",
+      AAPL: "AAPL",
+      GOOGL: "GOOGL",
+      AMZN: "AMZN",
+      MSFT: "MSFT",
+      NVDA: "NVDA",
     };
     return assetMap[asset] || asset.toLowerCase();
   };

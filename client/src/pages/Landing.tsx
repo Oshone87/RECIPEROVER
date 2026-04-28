@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -6,11 +6,15 @@ import { TierCard } from "@/components/TierCard";
 import { LiveTradingChart } from "@/components/LiveTradingChart";
 import { HowItWorks } from "@/components/HowItWorks";
 import { InvestmentModal } from "@/components/InvestmentModal";
+import { StockInvestmentModal } from "@/components/StockInvestmentModal";
 import { InvestmentTicker } from "@/components/InvestmentTicker";
+import { StockTicker } from "@/components/StockTicker";
+import { StockCard } from "@/components/StockCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Users } from "lucide-react";
+import { ArrowRight, Users, TrendingUp } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/apiClient";
 
 const TIERS = [
   {
@@ -60,8 +64,26 @@ const TIERS = [
 
 export default function Landing() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [stockModalOpen, setStockModalOpen] = useState(false);
+  const [selectedStock, setSelectedStock] = useState("TSLA");
+  const [stockPrices, setStockPrices] = useState<any[]>([]);
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Fetch stock prices
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const data = await apiClient.getStockPrices();
+        setStockPrices(data.stocks || []);
+      } catch (e) {
+        console.error("Failed to fetch stock prices:", e);
+      }
+    };
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleGetStarted = () => {
     if (isAuthenticated) {
@@ -74,6 +96,15 @@ export default function Landing() {
   const handleTierSelect = () => {
     if (isAuthenticated) {
       setModalOpen(true);
+    } else {
+      setLocation("/signup");
+    }
+  };
+
+  const handleStockInvest = (symbol: string) => {
+    if (isAuthenticated) {
+      setSelectedStock(symbol);
+      setStockModalOpen(true);
     } else {
       setLocation("/signup");
     }
@@ -107,13 +138,13 @@ export default function Landing() {
             Invest Smarter in
             <br />
             <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              Cryptocurrency
+              Crypto & Stocks
             </span>
           </h1>
 
           <p className="text-lg sm:text-xl text-blue-100 max-w-2xl mx-auto px-4 sm:px-0">
-            Earn up to 36% APR on your crypto investments with our secure,
-            tier-based investment platform
+            Earn up to 36% APR on crypto and stock investments with our secure,
+            tier-based investment platform. Invest in Tesla, Apple, NVIDIA, and more.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
@@ -148,6 +179,54 @@ export default function Landing() {
             {TIERS.map((tier) => (
               <TierCard key={tier.tier} {...tier} onSelect={handleTierSelect} />
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Live Stock Ticker */}
+      <StockTicker />
+
+      {/* Stock Investment Section */}
+      <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8 sm:mb-12">
+            <Badge className="mb-4 bg-white/10 text-white border-white/20" variant="secondary">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              <span className="text-xs sm:text-sm">Live Stock Prices</span>
+            </Badge>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
+              Stock Market Investments
+            </h2>
+            <p className="text-slate-300 max-w-2xl mx-auto px-4 sm:px-0">
+              Invest in the world's top stocks — Tesla, Apple, Google, Amazon, Microsoft, and NVIDIA — with the same tier-based returns.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {stockPrices.map((stock: any) => (
+              <StockCard
+                key={stock.symbol}
+                symbol={stock.symbol}
+                name={stock.name}
+                price={stock.price}
+                change={stock.change}
+                changePercent={stock.changePercent}
+                high={stock.high}
+                low={stock.low}
+                onInvest={() => handleStockInvest(stock.symbol)}
+              />
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <Button
+              size="lg"
+              onClick={handleGetStarted}
+              className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white px-8 py-3 text-lg font-semibold rounded-lg shadow-lg"
+            >
+              {isAuthenticated ? "Go to Dashboard" : "Start Investing in Stocks"}
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
           </div>
         </div>
       </section>
@@ -390,6 +469,11 @@ export default function Landing() {
       <Footer />
 
       <InvestmentModal open={modalOpen} onOpenChange={setModalOpen} />
+      <StockInvestmentModal
+        open={stockModalOpen}
+        onOpenChange={setStockModalOpen}
+        preselectedStock={selectedStock}
+      />
     </div>
   );
 }
