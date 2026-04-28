@@ -141,6 +141,12 @@ const assetBalanceSchema = new mongoose.Schema({
   bitcoin: { type: Number, default: 0 },
   ethereum: { type: Number, default: 0 },
   solana: { type: Number, default: 0 },
+  tesla: { type: Number, default: 0 },
+  apple: { type: Number, default: 0 },
+  google: { type: Number, default: 0 },
+  amazon: { type: Number, default: 0 },
+  microsoft: { type: Number, default: 0 },
+  nvidia: { type: Number, default: 0 },
   totalBalance: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
@@ -173,9 +179,11 @@ const kycRequestSchema = new mongoose.Schema({
 });
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);
-const AssetBalance =
-  mongoose.models.AssetBalance ||
-  mongoose.model("AssetBalance", assetBalanceSchema);
+// Force fresh schema registration (stock fields were added)
+if (mongoose.models.AssetBalance) {
+  delete mongoose.models.AssetBalance;
+}
+const AssetBalance = mongoose.model("AssetBalance", assetBalanceSchema);
 const KYCRequest =
   mongoose.models.KYCRequest || mongoose.model("KYCRequest", kycRequestSchema);
 
@@ -1109,10 +1117,16 @@ export default async function handler(req: any, res: any) {
         return res.status(200).json({
           message: "Balances retrieved successfully",
           balances: {
-            bitcoin: balances.bitcoin,
-            ethereum: balances.ethereum,
-            solana: balances.solana,
-            totalBalance: balances.totalBalance,
+            bitcoin: balances.bitcoin || 0,
+            ethereum: balances.ethereum || 0,
+            solana: balances.solana || 0,
+            tesla: balances.tesla || 0,
+            apple: balances.apple || 0,
+            google: balances.google || 0,
+            amazon: balances.amazon || 0,
+            microsoft: balances.microsoft || 0,
+            nvidia: balances.nvidia || 0,
+            totalBalance: balances.totalBalance || 0,
           },
         });
       } catch (error) {
@@ -1741,18 +1755,32 @@ export default async function handler(req: any, res: any) {
           // Credit user's balance
           const bal = await AssetBalance.findOne({ userId: doc.userId });
           if (bal) {
-            const fieldMap: Record<string, keyof typeof bal> = {
-              BTC: "bitcoin" as any,
-              ETH: "ethereum" as any,
-              SOL: "solana" as any,
-              bitcoin: "bitcoin" as any,
-              ethereum: "ethereum" as any,
-              solana: "solana" as any,
+            const fieldMap: Record<string, string> = {
+              BTC: "bitcoin",
+              ETH: "ethereum",
+              SOL: "solana",
+              TSLA: "tesla",
+              AAPL: "apple",
+              GOOGL: "google",
+              AMZN: "amazon",
+              MSFT: "microsoft",
+              NVDA: "nvidia",
+              bitcoin: "bitcoin",
+              ethereum: "ethereum",
+              solana: "solana",
+              tesla: "tesla",
+              apple: "apple",
+              google: "google",
+              amazon: "amazon",
+              microsoft: "microsoft",
+              nvidia: "nvidia",
             };
-            const field = (fieldMap as any)[doc.asset] || "totalBalance";
-            // @ts-ignore dynamic index
-            bal[field] = (bal[field] || 0) + doc.amount;
-            bal.totalBalance = (bal.totalBalance || 0) + doc.amount;
+            const field = fieldMap[doc.asset] || null;
+            if (field) {
+              // @ts-ignore dynamic index
+              bal[field] = (Number(bal[field]) || 0) + doc.amount;
+            }
+            bal.totalBalance = (Number(bal.totalBalance) || 0) + doc.amount;
             await bal.save();
           }
         }
@@ -1786,13 +1814,25 @@ export default async function handler(req: any, res: any) {
         if (!bal) {
           return res.status(400).json({ message: "No balances found" });
         }
-        const fieldMap: Record<string, keyof typeof bal> = {
-          BTC: "bitcoin" as any,
-          ETH: "ethereum" as any,
-          SOL: "solana" as any,
-          bitcoin: "bitcoin" as any,
-          ethereum: "ethereum" as any,
-          solana: "solana" as any,
+        const fieldMap: Record<string, string> = {
+          BTC: "bitcoin",
+          ETH: "ethereum",
+          SOL: "solana",
+          TSLA: "tesla",
+          AAPL: "apple",
+          GOOGL: "google",
+          AMZN: "amazon",
+          MSFT: "microsoft",
+          NVDA: "nvidia",
+          bitcoin: "bitcoin",
+          ethereum: "ethereum",
+          solana: "solana",
+          tesla: "tesla",
+          apple: "apple",
+          google: "google",
+          amazon: "amazon",
+          microsoft: "microsoft",
+          nvidia: "nvidia",
         };
         const field = (fieldMap as any)[asset] || null;
         if (!field) {
@@ -2048,20 +2088,34 @@ export default async function handler(req: any, res: any) {
         if (updated && (status === "approved" || status === "completed")) {
           const bal = await AssetBalance.findOne({ userId: updated.userId });
           if (bal) {
-            const fieldMap: Record<string, keyof typeof bal> = {
-              BTC: "bitcoin" as any,
-              ETH: "ethereum" as any,
-              SOL: "solana" as any,
-              bitcoin: "bitcoin" as any,
-              ethereum: "ethereum" as any,
-              solana: "solana" as any,
+            const fieldMap: Record<string, string> = {
+              BTC: "bitcoin",
+              ETH: "ethereum",
+              SOL: "solana",
+              TSLA: "tesla",
+              AAPL: "apple",
+              GOOGL: "google",
+              AMZN: "amazon",
+              MSFT: "microsoft",
+              NVDA: "nvidia",
+              bitcoin: "bitcoin",
+              ethereum: "ethereum",
+              solana: "solana",
+              tesla: "tesla",
+              apple: "apple",
+              google: "google",
+              amazon: "amazon",
+              microsoft: "microsoft",
+              nvidia: "nvidia",
             };
-            const field = (fieldMap as any)[updated.asset] || "totalBalance";
-            // @ts-ignore dynamic index
-            bal[field] = Math.max(0, (bal[field] || 0) - updated.amount);
+            const field = fieldMap[updated.asset] || null;
+            if (field) {
+              // @ts-ignore dynamic index
+              bal[field] = Math.max(0, (Number(bal[field]) || 0) - updated.amount);
+            }
             bal.totalBalance = Math.max(
               0,
-              (bal.totalBalance || 0) - updated.amount
+              (Number(bal.totalBalance) || 0) - updated.amount
             );
             await bal.save();
           }
