@@ -145,100 +145,72 @@ const generateRandomInvestment = (
 };
 
 export function InvestmentTicker() {
-  const [notifications, setNotifications] = useState<InvestmentNotification[]>(
-    []
-  );
+  const [currentNotification, setCurrentNotification] = useState<InvestmentNotification | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
   const usedNamesRef = useRef<UsedName[]>([]);
 
   useEffect(() => {
-    // Initial notifications
-    const initial = Array.from({ length: 8 }, () =>
-      generateRandomInvestment(usedNamesRef)
-    );
-    setNotifications(initial);
+    let timeoutId: NodeJS.Timeout;
+    let hideTimeoutId: NodeJS.Timeout;
 
-    // Add new notification every 3-5 seconds
-    const interval = setInterval(() => {
-      setNotifications((prev) => {
-        const newNotification = generateRandomInvestment(usedNamesRef);
-        // Keep only the last 12 notifications for performance
-        return [...prev.slice(-11), newNotification];
-      });
-    }, Math.random() * 2000 + 3000); // 3-5 seconds
+    const scheduleNext = () => {
+      // Wait 5 seconds before showing the next notification
+      timeoutId = setTimeout(() => {
+        setCurrentNotification(generateRandomInvestment(usedNamesRef));
+        setIsVisible(true);
 
-    return () => clearInterval(interval);
+        // Hide after 3 seconds
+        hideTimeoutId = setTimeout(() => {
+          setIsVisible(false);
+          // Schedule the next one after it hides
+          scheduleNext();
+        }, 3000);
+      }, 5000);
+    };
+
+    // Start the cycle
+    scheduleNext();
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(hideTimeoutId);
+    };
   }, []);
 
+  if (!currentNotification) return null;
+
   return (
-    <div className="w-full bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 dark:from-green-950/20 dark:via-emerald-950/20 dark:to-green-950/20 border-y border-green-200 dark:border-green-800/50 overflow-hidden py-3">
-      <div className="flex items-center gap-4 animate-marquee whitespace-nowrap">
-        {/* Live indicator */}
-        <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900/30 px-3 py-1.5 rounded-full border border-green-300 dark:border-green-700">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-green-700 dark:text-green-300 font-medium text-sm">
-            LIVE INVESTMENTS
+    <div
+      className={`fixed bottom-6 left-6 z-50 transition-all duration-500 transform ${
+        isVisible
+          ? "translate-y-0 opacity-100"
+          : "translate-y-10 opacity-0 pointer-events-none"
+      }`}
+    >
+      <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-5 py-3 rounded-xl border border-green-200 dark:border-green-800 shadow-xl shadow-green-900/5">
+        <div className="flex items-center gap-2">
+          <div className="relative flex h-3 w-3 mr-1">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+          </div>
+        </div>
+        <div className="text-sm">
+          <span className="font-semibold text-gray-900 dark:text-gray-100">
+            {currentNotification.name}
+          </span>
+          <span className="text-gray-600 dark:text-gray-400 mx-1">
+            invested
+          </span>
+          <span className="font-bold text-green-600 dark:text-green-400">
+            ${currentNotification.amount.toLocaleString()}
+          </span>
+          <span className="text-gray-600 dark:text-gray-400 mx-1">
+            in {currentNotification.asset}
+          </span>
+          <span className="text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full ml-1">
+            {currentNotification.tier}
           </span>
         </div>
-
-        {/* Scrolling notifications */}
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className="flex items-center gap-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm mx-2 flex-shrink-0"
-          >
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="text-sm">
-              <span className="font-semibold text-gray-900 dark:text-gray-100">
-                {notification.name}
-              </span>
-              <span className="text-gray-600 dark:text-gray-400 mx-1">
-                invested
-              </span>
-              <span className="font-bold text-green-600 dark:text-green-400">
-                ${notification.amount.toLocaleString()}
-              </span>
-              <span className="text-gray-600 dark:text-gray-400 mx-1">
-                in {notification.asset}
-              </span>
-              <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full ml-1">
-                {notification.tier}
-              </span>
-            </div>
-          </div>
-        ))}
-
-        {/* Duplicate the notifications for seamless loop */}
-        {notifications.map((notification) => (
-          <div
-            key={`${notification.id}-duplicate`}
-            className="flex items-center gap-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm mx-2 flex-shrink-0"
-          >
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="text-sm">
-              <span className="font-semibold text-gray-900 dark:text-gray-100">
-                {notification.name}
-              </span>
-              <span className="text-gray-600 dark:text-gray-400 mx-1">
-                invested
-              </span>
-              <span className="font-bold text-green-600 dark:text-green-400">
-                ${notification.amount.toLocaleString()}
-              </span>
-              <span className="text-gray-600 dark:text-gray-400 mx-1">
-                in {notification.asset}
-              </span>
-              <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full ml-1">
-                {notification.tier}
-              </span>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
