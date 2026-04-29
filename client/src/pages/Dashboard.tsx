@@ -546,6 +546,39 @@ export default function Dashboard() {
                     <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                     <span className="text-sm sm:text-base">New Stock Investment</span>
                   </Button>
+
+                  <TooltipProvider>
+                    <Tooltip open={!kycInfo.isVerified ? undefined : false}>
+                      <TooltipTrigger asChild>
+                        <span className="w-full sm:w-auto">
+                          <Button
+                            size="lg"
+                            variant="outline"
+                            onClick={() => {
+                              if (!kycInfo.isVerified) return;
+                              if (user?.withdrawalRestricted) {
+                                toast({ title: "Withdrawal Restricted", description: "Your account has withdrawal restrictions. Please check the alert at the top of the page.", variant: "destructive" });
+                                return;
+                              }
+                              if (hasCompletedInvestments() && !user?.processingFeePaid) {
+                                setFeeExplanationModalOpen(true);
+                              } else {
+                                setWithdrawalModalOpen(true);
+                              }
+                            }}
+                            disabled={stockBalance <= 0 || user?.withdrawalRestricted}
+                            className="w-full sm:w-auto bg-transparent text-white border-white/20 hover:bg-white/10 hover:text-white"
+                          >
+                            <Wallet className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                            <span className="text-sm sm:text-base">Withdraw</span>
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {!kycInfo.isVerified && (
+                        <TooltipContent side="bottom">Go to Settings ? KYC Verification to complete your KYC before withdrawing.</TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </div>
             </div>
