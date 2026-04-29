@@ -244,11 +244,11 @@ export default function Dashboard() {
   const stockBalance = stockAssets.reduce((sum, asset) => sum + getAssetBalance(asset), 0);
 
   const cryptoInvested = investments
-    .filter(inv => inv.status === 'active' && (!inv.assetType || inv.assetType === 'crypto' || cryptoAssets.includes(inv.asset)))
+    .filter(inv => inv.status === 'active' && cryptoAssets.includes(inv.asset))
     .reduce((sum, inv) => sum + inv.amount, 0);
 
   const stockInvested = investments
-    .filter(inv => inv.status === 'active' && (inv.assetType === 'stock' || stockAssets.includes(inv.asset)))
+    .filter(inv => inv.status === 'active' && stockAssets.includes(inv.asset))
     .reduce((sum, inv) => sum + inv.amount, 0);
 
   const cryptoTransactions = realTransactions.filter((tx: any) => cryptoAssets.includes(tx.asset));
@@ -433,9 +433,7 @@ export default function Dashboard() {
           
           <div className="flex-1 bg-background">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-              <Card className="p-4 sm:p-6 mb-6 sm:mb-8">
-                <InvestmentGrowthChart filterType="crypto" />
-              </Card>
+              {/* Removed InvestmentGrowthChart from crypto tab per user request */}
 
               <Card className="p-4 sm:p-6">
                 <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">Crypto Transactions</h2>
