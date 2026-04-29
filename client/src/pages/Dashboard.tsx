@@ -434,7 +434,7 @@ export default function Dashboard() {
           <div className="flex-1 bg-background">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
               <Card className="p-4 sm:p-6 mb-6 sm:mb-8">
-                <InvestmentGrowthChart />
+                <InvestmentGrowthChart filterType="crypto" />
               </Card>
 
               <Card className="p-4 sm:p-6">
@@ -565,6 +565,10 @@ export default function Dashboard() {
                      </div>
                    ))}
                 </div>
+              </Card>
+
+              <Card className="p-4 sm:p-6 mb-6 sm:mb-8">
+                <InvestmentGrowthChart filterType="stock" />
               </Card>
 
               <Card className="p-4 sm:p-6">

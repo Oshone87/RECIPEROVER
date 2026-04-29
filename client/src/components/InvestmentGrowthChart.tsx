@@ -21,8 +21,11 @@ interface DailyGrowth {
   dailyEarning: number;
   percentage: number;
 }
+interface InvestmentGrowthChartProps {
+  filterType?: "crypto" | "stock";
+}
 
-export function InvestmentGrowthChart() {
+export function InvestmentGrowthChart({ filterType }: InvestmentGrowthChartProps = {}) {
   const { getActiveInvestments } = useInvestment();
   const [selectedInvestment, setSelectedInvestment] = useState<string | null>(
     null
@@ -77,9 +80,17 @@ export function InvestmentGrowthChart() {
   };
 
   const getDisplayInvestments = () => {
-    const validInvestments = activeInvestments.filter(
+    let validInvestments = activeInvestments.filter(
       (inv) => inv && inv.id && inv.amount && inv.tier && inv.asset
     );
+
+    if (filterType === "crypto") {
+      const cryptoAssets = ["BTC", "ETH", "SOL"];
+      validInvestments = validInvestments.filter((inv) => !inv.assetType || inv.assetType === "crypto" || cryptoAssets.includes(inv.asset));
+    } else if (filterType === "stock") {
+      const stockAssets = ["TSLA", "AAPL", "GOOGL", "AMZN", "MSFT", "NVDA"];
+      validInvestments = validInvestments.filter((inv) => inv.assetType === "stock" || stockAssets.includes(inv.asset));
+    }
 
     if (showAllInvestments) return validInvestments;
     if (selectedInvestment) {
@@ -104,7 +115,9 @@ export function InvestmentGrowthChart() {
     return totalInvested > 0 ? (totalEarned / totalInvested) * 100 : 0;
   };
 
-  if (activeInvestments.length === 0) {
+  const displayInvestments = getDisplayInvestments();
+
+  if (displayInvestments.length === 0) {
     return (
       <Card className="p-8 text-center">
         <div className="max-w-md mx-auto space-y-4">
@@ -136,7 +149,7 @@ export function InvestmentGrowthChart() {
 
       {/* Investment cards with Daily Progress Tracker only */}
       <div className="space-y-4">
-        {getDisplayInvestments().map((investment) => {
+        {displayInvestments.map((investment) => {
           return (
             <DailyProgressTracker 
               key={investment.id}
