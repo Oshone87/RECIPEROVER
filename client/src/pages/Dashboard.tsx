@@ -70,6 +70,8 @@ export default function Dashboard() {
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
   const [restrictionModalOpen, setRestrictionModalOpen] = useState(false);
   const [stockModalOpen, setStockModalOpen] = useState(false);
+  const [stockPickerOpen, setStockPickerOpen] = useState(false);
+  const [selectedStockForDeposit, setSelectedStockForDeposit] = useState<string | undefined>(undefined);
 
   // Real user data from API
   const [realBalances, setRealBalances] = useState({
@@ -522,7 +524,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-                  <Button size="lg" variant="secondary" onClick={() => setDepositModalOpen(true)} className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-0">
+                  <Button size="lg" variant="secondary" onClick={() => setStockPickerOpen(true)} className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-0">
                     <Upload className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                     <span className="text-sm sm:text-base">Deposit via Crypto</span>
                   </Button>
@@ -639,16 +641,51 @@ export default function Dashboard() {
       />
       <DepositModal
         open={depositModalOpen}
-        onOpenChange={setDepositModalOpen}
+        onOpenChange={(open) => {
+          setDepositModalOpen(open);
+          if (!open) setSelectedStockForDeposit(undefined);
+        }}
+        targetStockAsset={selectedStockForDeposit}
         onSuccess={() => {
           // After deposit success, refresh balances and optionally open investment modal
           fetchUserData();
+          setSelectedStockForDeposit(undefined);
           if (openInvestmentAfterDeposit) {
             setOpenInvestmentAfterDeposit(false);
             setModalOpen(true);
           }
         }}
       />
+      {/* Stock Picker Dialog — choose which stock to deposit into */}
+      <Dialog open={stockPickerOpen} onOpenChange={setStockPickerOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Select Stock to Deposit Into</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-4">
+            Choose which stock you want to fund. You'll pay using crypto (BTC, ETH, or SOL) and the funds will be credited to your selected stock balance.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {["TSLA", "AAPL", "GOOGL", "AMZN", "MSFT", "NVDA"].map((ticker) => (
+              <Button
+                key={ticker}
+                variant="outline"
+                className="h-16 flex flex-col gap-1 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                onClick={() => {
+                  setSelectedStockForDeposit(ticker);
+                  setStockPickerOpen(false);
+                  setDepositModalOpen(true);
+                }}
+              >
+                <span className="font-bold text-base">{ticker}</span>
+                <span className="text-xs text-muted-foreground">
+                  {ticker === "TSLA" ? "Tesla" : ticker === "AAPL" ? "Apple" : ticker === "GOOGL" ? "Google" : ticker === "AMZN" ? "Amazon" : ticker === "MSFT" ? "Microsoft" : "NVIDIA"}
+                </span>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Earn x2 explanation modal: shown right after user clicks Earn x2 */}
       <Dialog open={showEarnX2Explain} onOpenChange={setShowEarnX2Explain}>
         <DialogContent className="sm:max-w-lg">

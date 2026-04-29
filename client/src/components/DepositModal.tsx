@@ -48,12 +48,14 @@ interface DepositModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  targetStockAsset?: string; // e.g. "TSLA" — when set, deposit is tagged for this stock
 }
 
 export function DepositModal({
   open,
   onOpenChange,
   onSuccess,
+  targetStockAsset,
 }: DepositModalProps) {
   const [step, setStep] = useState(1);
   const [asset, setAsset] = useState("BTC");
@@ -104,7 +106,7 @@ export function DepositModal({
     try {
       await apiClient.submitDeposit({
         amount: numAmount,
-        asset,
+        asset: targetStockAsset || asset, // Use stock ticker if depositing for a stock
         senderAddress: senderAddress || undefined,
       });
 
@@ -154,14 +156,24 @@ export function DepositModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Deposit Funds
+            {targetStockAsset ? `Deposit for ${targetStockAsset} Stock` : "Deposit Funds"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {step === 1 && (
             <div className="space-y-4">
-              <h3 className="font-semibold">Select Asset & Amount</h3>
+              <h3 className="font-semibold">Select Payment Method & Amount</h3>
+              {targetStockAsset && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                  <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
+                    Depositing into: <span className="font-bold">{targetStockAsset}</span> stock balance
+                  </p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                    Pay using any crypto below. Funds will be credited to your {targetStockAsset} holdings.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Asset</Label>
