@@ -237,7 +237,7 @@ export default function Dashboard() {
   const availableBalance = Number(getAvailableBalance() ?? 0);
 
   // Compute Crypto vs Stock Splits
-  const cryptoAssets = ["BTC", "ETH", "SOL"];
+  const cryptoAssets = ["BTC", "ETH", "SOL", "bitcoin", "ethereum", "solana"];
   const stockAssets = ["TSLA", "AAPL", "GOOGL", "AMZN", "MSFT", "NVDA"];
 
   const cryptoBalance = cryptoAssets.reduce((sum, asset) => sum + getAssetBalance(asset), 0);
@@ -433,7 +433,9 @@ export default function Dashboard() {
           
           <div className="flex-1 bg-background">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-              {/* Removed InvestmentGrowthChart from crypto tab per user request */}
+              <Card className="p-4 sm:p-6 mb-6 sm:mb-8">
+                <InvestmentGrowthChart filterType="crypto" />
+              </Card>
 
               <Card className="p-4 sm:p-6">
                 <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">Crypto Transactions</h2>

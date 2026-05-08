@@ -85,7 +85,7 @@ export function InvestmentGrowthChart({ filterType }: InvestmentGrowthChartProps
     );
 
     if (filterType === "crypto") {
-      const cryptoAssets = ["BTC", "ETH", "SOL"];
+      const cryptoAssets = ["BTC", "ETH", "SOL", "bitcoin", "ethereum", "solana"];
       validInvestments = validInvestments.filter((inv) => !inv.assetType || inv.assetType === "crypto" || cryptoAssets.includes(inv.asset));
     } else if (filterType === "stock") {
       const stockAssets = ["TSLA", "AAPL", "GOOGL", "AMZN", "MSFT", "NVDA"];
