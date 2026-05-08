@@ -139,6 +139,30 @@ export default function AdminDashboard() {
   const invPageSize = 10;
   const [invDetailOpen, setInvDetailOpen] = useState(false);
   const [invDetail, setInvDetail] = useState<any | null>(null);
+
+  // Helper to calculate earnings like InvestmentContext does
+  const calculateEarned = (inv: any) => {
+    if (!inv || inv.status !== 'active') return 0;
+    const startDate = inv.startDate ? new Date(inv.startDate) : new Date(inv.createdAt || Date.now());
+    const endDate = inv.endDate ? new Date(inv.endDate) : new Date(startDate.getTime() + (inv.period || 30) * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    
+    const totalDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const elapsedDays = Math.min(totalDays, Math.max(0, Math.round((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))));
+    
+    const aprFromTier = (tier: string) => {
+      const t = (tier || "").toLowerCase();
+      if (t.includes("platinum")) return 36;
+      if (t.includes("gold")) return 30;
+      if (t.includes("silver")) return 24;
+      return 24;
+    };
+    
+    const apr = Number(inv.apr ?? aprFromTier(inv.tier));
+    const dailyRate = apr / 365;
+    return Number((inv.amount || 0) * dailyRate * elapsedDays);
+  };
+
   // Users tab state
   const [usersFilter, setUsersFilter] = useState<"all" | "verified">("all");
   const [userSearch, setUserSearch] = useState("");
@@ -1210,6 +1234,9 @@ export default function AdminDashboard() {
                                 APR
                               </th>
                               <th className="text-left py-3 px-4 text-xs sm:text-sm">
+                                Earned
+                              </th>
+                              <th className="text-left py-3 px-4 text-xs sm:text-sm">
                                 Status
                               </th>
                               <th className="text-left py-3 px-4 text-xs sm:text-sm">
@@ -1224,7 +1251,7 @@ export default function AdminDashboard() {
                             {paged.length === 0 ? (
                               <tr>
                                 <td
-                                  colSpan={9}
+                                  colSpan={10}
                                   className="py-8 text-center text-muted-foreground"
                                 >
                                   No investments
@@ -1246,7 +1273,10 @@ export default function AdminDashboard() {
                                   </td>
                                   <td className="py-3 px-4">{inv.period}d</td>
                                   <td className="py-3 px-4">
-                                    {inv.apr ?? "-"}
+                                    {inv.apr ?? "-"}%
+                                  </td>
+                                  <td className="py-3 px-4 font-mono text-green-600 dark:text-green-400">
+                                    +${calculateEarned(inv).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </td>
                                   <td className="py-3 px-4">
                                     <Badge
@@ -1880,7 +1910,7 @@ export default function AdminDashboard() {
                     period: invDetail.period,
                     startDate: invDetail.startDate || invDetail.createdAt,
                     endDate: invDetail.endDate || new Date(new Date(invDetail.createdAt).getTime() + invDetail.period * 24 * 60 * 60 * 1000).toISOString(),
-                    earned: invDetail.earned || 0,
+                    earned: calculateEarned(invDetail),
                     status: invDetail.status,
                     progress: invDetail.progress
                   }}
